@@ -1,0 +1,19 @@
+import express, { type Express } from "express";
+import cors from "cors";
+import { setupAuth } from "./auth.js";
+import router from "./routes/index.js";
+
+const app: Express = express();
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+setupAuth(app);
+
+app.use("/api", router);
+
+export default app;
