@@ -1,8 +1,7 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { ai } from "@workspace/integrations-gemini-ai";
 import { storage as db } from "../storage.js";
 import { requireAdmin, hashPassword, comparePasswords } from "../auth.js";
-import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
 
 const router = Router();
 
@@ -45,97 +44,73 @@ router.get("/admin/assistant/pin-status", requireAdmin, async (req, res) => {
   }
 });
 
-const tools: ChatCompletionTool[] = [
+const toolDeclarations = [
   {
-    type: "function",
-    function: {
-      name: "get_leads_summary",
-      description: "Get summary of all leads: total count, HOT/NORMAL/COLD counts, today's follow-ups, upcoming visits",
-      parameters: { type: "object", properties: {}, required: [] },
-    },
+    name: "get_leads_summary",
+    description: "Get summary of all leads: total count, HOT/NORMAL/COLD counts, today's follow-ups, upcoming visits",
+    parameters: { type: "OBJECT" as const, properties: {}, required: [] as string[] },
   },
   {
-    type: "function",
-    function: {
-      name: "get_upcoming_visits",
-      description: "Get list of upcoming factory visits scheduled in the next 7 days",
-      parameters: { type: "object", properties: {}, required: [] },
-    },
+    name: "get_upcoming_visits",
+    description: "Get list of upcoming factory visits scheduled in the next 7 days",
+    parameters: { type: "OBJECT" as const, properties: {}, required: [] as string[] },
   },
   {
-    type: "function",
-    function: {
-      name: "search_leads",
-      description: "Search leads by name, city, or machine type",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search term for name, city, or machine type" },
-        },
-        required: ["query"],
+    name: "search_leads",
+    description: "Search leads by name, city, or machine type",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        query: { type: "STRING" as const, description: "Search term for name, city, or machine type" },
       },
+      required: ["query"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "update_lead_status",
-      description: "Update a lead's status. IMPORTANT: Always ask admin for confirmation before calling this.",
-      parameters: {
-        type: "object",
-        properties: {
-          leadId: { type: "string", description: "The lead's ID" },
-          status: { type: "string", enum: ["HOT", "NORMAL", "COLD", "STOP"], description: "New status" },
-        },
-        required: ["leadId", "status"],
+    name: "update_lead_status",
+    description: "Update a lead's status. IMPORTANT: Always ask admin for confirmation before calling this.",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        leadId: { type: "STRING" as const, description: "The lead's ID" },
+        status: { type: "STRING" as const, description: "New status: HOT, NORMAL, COLD, or STOP" },
       },
+      required: ["leadId", "status"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "add_reminder",
-      description: "Add a follow-up reminder for a lead. Always confirm with admin before creating.",
-      parameters: {
-        type: "object",
-        properties: {
-          leadId: { type: "string", description: "The lead's ID" },
-          reminderDate: { type: "string", description: "Date in YYYY-MM-DD format" },
-          message: { type: "string", description: "Reminder message" },
-        },
-        required: ["leadId", "reminderDate", "message"],
+    name: "add_reminder",
+    description: "Add a follow-up reminder for a lead. Always confirm with admin before creating.",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        leadId: { type: "STRING" as const, description: "The lead's ID" },
+        reminderDate: { type: "STRING" as const, description: "Date in YYYY-MM-DD format" },
+        message: { type: "STRING" as const, description: "Reminder message" },
       },
+      required: ["leadId", "reminderDate", "message"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "web_search",
-      description: "Search the internet for real-time information like steel prices, market trends, news, competitor info, etc.",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query in natural language" },
-        },
-        required: ["query"],
+    name: "web_search",
+    description: "Search the internet for real-time information like steel prices, market trends, news, competitor info, etc.",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        query: { type: "STRING" as const, description: "Search query in natural language" },
       },
+      required: ["query"],
     },
   },
   {
-    type: "function",
-    function: {
-      name: "get_products",
-      description: "Get list of all products/machines in the catalog",
-      parameters: { type: "object", properties: {}, required: [] },
-    },
+    name: "get_products",
+    description: "Get list of all products/machines in the catalog",
+    parameters: { type: "OBJECT" as const, properties: {}, required: [] as string[] },
   },
   {
-    type: "function",
-    function: {
-      name: "get_today_reminders",
-      description: "Get today's pending follow-up reminders",
-      parameters: { type: "object", properties: {}, required: [] },
-    },
+    name: "get_today_reminders",
+    description: "Get today's pending follow-up reminders",
+    parameters: { type: "OBJECT" as const, properties: {}, required: [] as string[] },
   },
 ];
 
@@ -228,55 +203,176 @@ router.post("/admin/assistant/chat", requireAdmin, async (req, res) => {
       return res.status(400).json({ message: "messages array required" });
     }
 
-    const chatMessages: ChatCompletionMessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...clientMessages,
-    ];
+    const contents = clientMessages.map((m: any) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
 
-    let response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 8192,
-      messages: chatMessages,
-      tools,
+    let response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents,
+      config: {
+        maxOutputTokens: 8192,
+        systemInstruction: SYSTEM_PROMPT,
+        tools: [{ functionDeclarations: toolDeclarations }],
+      },
     });
 
-    let assistantMessage = response.choices[0]?.message;
     let iterations = 0;
     const maxIterations = 5;
 
-    while (assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0 && iterations < maxIterations) {
+    while (response.functionCalls && response.functionCalls.length > 0 && iterations < maxIterations) {
       iterations++;
-      chatMessages.push(assistantMessage);
 
-      for (const toolCall of assistantMessage.tool_calls) {
-        const fnName = toolCall.function.name;
-        let fnArgs: Record<string, any> = {};
-        try {
-          fnArgs = JSON.parse(toolCall.function.arguments);
-        } catch {}
-
-        const result = await executeTool(fnName, fnArgs);
-        chatMessages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: result,
+      const functionResponses: any[] = [];
+      for (const fc of response.functionCalls) {
+        const result = await executeTool(fc.name, fc.args || {});
+        functionResponses.push({
+          name: fc.name,
+          response: { result },
         });
       }
 
-      response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        max_completion_tokens: 8192,
-        messages: chatMessages,
-        tools,
+      contents.push({
+        role: "model",
+        parts: response.candidates?.[0]?.content?.parts || [],
       });
-      assistantMessage = response.choices[0]?.message;
+
+      contents.push({
+        role: "user",
+        parts: functionResponses.map((fr: any) => ({
+          functionResponse: fr,
+        })),
+      });
+
+      response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          maxOutputTokens: 8192,
+          systemInstruction: SYSTEM_PROMPT,
+          tools: [{ functionDeclarations: toolDeclarations }],
+        },
+      });
     }
 
-    const reply = assistantMessage?.content || "Koi jawab nahi mila. Dobara try karo.";
+    const reply = response.text || "Koi jawab nahi mila. Dobara try karo.";
     return res.json({ reply });
   } catch (err: any) {
     console.error("Assistant chat error:", err);
     return res.status(500).json({ message: "AI assistant error: " + (err.message || "Unknown error") });
+  }
+});
+
+const CLIENT_SYSTEM_PROMPT = `Tu Sai Rolotech ka AI Customer Assistant hai. Tu visitors aur buyers ko help karta hai - machines ke baare mein info dena, pricing, delivery timelines, factory visit booking, etc.
+
+Company: Sai Rolotech
+Products: Rolling Shutter Patti Machines, False Ceiling (POP Channel, Gypsum Channel, T-Grid), Roof Panel machines, Door Frame machines, C/Z Purlin machines
+Location: Ground Floor Mdk052, Kh.no.575/1, Udyog Nagar, South Side Industrial Area, Mundka, New Delhi, Delhi 110041
+Phone: +91 9090-486-262
+Email: sairolotech@gmail.com
+
+Pricing Guide:
+- Shutter Patti Basic: Rs 2.7L-3.6L
+- Shutter Patti Medium: Rs 4.4L-5.5L
+- Shutter Patti Advance: Rs 7.8L
+- POP Channel 3-in-1: Rs 6L-8.5L
+- POP Channel 2-in-1: Rs 5L-7L
+- Gypsum Single: Rs 3.5L-4.5L
+- Gypsum 2-in-1: Rs 7.5L
+- Gypsum 4-in-1: Rs 12L
+- T-Grid Line: Rs 15.5L
+
+Delivery: Basic 20-30 days, Medium 30-40 days, Advance 35-45 days
+
+Rules:
+1. Hindi/Hinglish ya English mein baat kar - jo customer bole.
+2. Friendly aur helpful tone rakho.
+3. Pricing info share karo but exact quote ke liye call karne bolo.
+4. Factory visit encourage karo.
+5. Markdown use mat kar. Plain text mein jawab de.
+6. Chhota aur useful jawab de. Zyada lamba mat kar.
+7. Agar koi technical ya sales question ho jo tu handle nahi kar sakta, customer ko phone karne bolo.`;
+
+router.post("/client/chat", async (req, res) => {
+  try {
+    const { messages: clientMessages } = req.body;
+    if (!clientMessages || !Array.isArray(clientMessages)) {
+      return res.status(400).json({ message: "messages array required" });
+    }
+
+    const contents = clientMessages.slice(-10).map((m: any) => ({
+      role: m.role === "bot" || m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.text || m.content }],
+    }));
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents,
+      config: {
+        maxOutputTokens: 1024,
+        systemInstruction: CLIENT_SYSTEM_PROMPT,
+      },
+    });
+
+    const reply = response.text || "Sorry, I could not process your request. Please call us at +91 9090-486-262.";
+    return res.json({ reply });
+  } catch (err: any) {
+    console.error("Client chat error:", err);
+    return res.json({ reply: "I'm having trouble right now. Please call us at +91 9090-486-262 or WhatsApp us for immediate help!" });
+  }
+});
+
+const OTP_EXPIRY_MINUTES = 10;
+
+router.post("/admin/assistant/send-otp", requireAdmin, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ message: "Valid email required" });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await db.createOtpCode({
+      userId: (req as any).user?.id || null,
+      email,
+      code,
+      purpose: "assistant_unlock",
+      expiresAt,
+    });
+
+    const { sendOTPEmail } = await import("../email.js");
+    const username = (req as any).user?.name || (req as any).user?.username || "Admin";
+    const sent = await sendOTPEmail(email, code, username);
+
+    if (!sent) {
+      return res.json({ success: true, message: "OTP generated (email delivery may be unavailable)", devCode: process.env.NODE_ENV === "development" ? code : undefined });
+    }
+
+    return res.json({ success: true, message: `OTP sent to ${email}` });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/admin/assistant/verify-otp", requireAdmin, async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and OTP code required" });
+    }
+
+    const otp = await db.getValidOtpCode(email, code, "assistant_unlock");
+    if (!otp) {
+      return res.status(401).json({ message: "Invalid or expired OTP" });
+    }
+
+    await db.markOtpUsed(otp.id);
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
   }
 });
 

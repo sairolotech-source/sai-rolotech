@@ -10,7 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "glossy-btn bg-gradient-to-r from-indigo-500 to-violet-500 text-white border border-indigo-400/20 shadow-[0_2px_12px_rgba(99,102,241,0.3)]",
+          "glossy-btn neon-btn bg-gradient-to-r from-[#0077FF] to-[#00D4FF] text-white border border-[rgba(0,212,255,0.25)]",
         destructive:
           "glossy-btn bg-gradient-to-r from-red-500 to-rose-500 text-white border border-red-400/20 shadow-[0_2px_12px_rgba(239,68,68,0.3)]",
         outline:

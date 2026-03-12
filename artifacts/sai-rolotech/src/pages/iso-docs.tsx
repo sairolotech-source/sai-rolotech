@@ -135,7 +135,7 @@ function OverviewTab({ docs, audits, capaList }: { docs: IsoDocument[]; audits: 
         </Card>
         <Card>
           <CardContent className="pt-3 pb-3 text-center">
-            <BarChart3 className="w-5 h-5 mx-auto mb-1 text-indigo-500" />
+            <BarChart3 className="w-5 h-5 mx-auto mb-1 text-blue-500" />
             <p className="text-lg font-bold" data-testid="text-iso-coverage">{coveragePercent}%</p>
             <p className="text-[10px] text-muted-foreground">Clause Coverage</p>
             <p className="text-[10px] text-muted-foreground">{clauseCoverage.size}/7 Main Clauses</p>

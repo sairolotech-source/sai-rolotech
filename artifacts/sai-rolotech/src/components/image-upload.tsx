@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiUpload } from "@/lib/queryClient";
 
 interface ImageUploadProps {
   bucket: string;
@@ -32,17 +33,7 @@ export function ImageUpload({ bucket, value, onChange, label = "Upload Image" }:
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(`/api/upload/${bucket}`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Upload failed");
-      }
-
+      const res = await apiUpload("POST", `/api/upload/${bucket}`, formData);
       const data = await res.json();
       onChange(data.url);
       toast({ title: "Image uploaded!" });
@@ -114,17 +105,7 @@ export function MultiImageUpload({ bucket, values, onChange, label = "Upload Ima
       const formData = new FormData();
       Array.from(files).forEach(f => formData.append("files", f));
 
-      const res = await fetch(`/api/upload/${bucket}/multiple`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Upload failed");
-      }
-
+      const res = await apiUpload("POST", `/api/upload/${bucket}/multiple`, formData);
       const data = await res.json();
       onChange([...values, ...data.urls]);
       toast({ title: `${data.urls.length} image(s) uploaded!` });

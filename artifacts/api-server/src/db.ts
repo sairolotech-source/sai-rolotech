@@ -1,1 +1,1 @@
-export { db, pool } from "@workspace/db";
+export { firestore as db, firebaseAuth, firebaseStorage } from "@workspace/db";

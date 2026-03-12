@@ -532,6 +532,7 @@ function RequestQuoteForm({ onBack }: { onBack: () => void }) {
       return res.json();
     },
     onSuccess: () => {
+      import("@/lib/google-analytics").then((m) => m.trackQuotationRequest());
       toast({ title: "Quote Requested!", description: "Our team will contact you shortly with a detailed quotation." });
     },
   });

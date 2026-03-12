@@ -1,571 +1,578 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, boolean, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { pgTable, varchar, text, boolean, decimal, timestamp, integer, jsonb, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { createInsertSchema } from "drizzle-zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  email: text("email"),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  role: text("role").notNull().default("buyer"),
-  companyName: text("company_name"),
-  gstNo: text("gst_no"),
-  location: text("location"),
-  state: text("state"),
-  machineSpecialization: text("machine_specialization"),
-  isVerified: boolean("is_verified").default(false),
-  isApproved: boolean("is_approved").default(false),
-  isEmailVerified: boolean("is_email_verified").default(false),
-  twoFactorEnabled: boolean("two_factor_enabled").default(false),
-  twoFactorSecret: text("two_factor_secret"),
-  allowedDevices: text("allowed_devices").array(),
-  lastDeviceFingerprint: text("last_device_fingerprint"),
-  warningCount: integer("warning_count").default(0),
-  isFrozen: boolean("is_frozen").default(false),
-  lastLoginAt: timestamp("last_login_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+export interface User {
+  id: string;
+  username: string;
+  password: string;
+  email: string | null;
+  name: string;
+  phone: string;
+  role: string;
+  companyName: string | null;
+  gstNo: string | null;
+  location: string | null;
+  state: string | null;
+  machineSpecialization: string | null;
+  isVerified: boolean | null;
+  isApproved: boolean | null;
+  isEmailVerified: boolean | null;
+  twoFactorEnabled: boolean | null;
+  twoFactorSecret: string | null;
+  allowedDevices: string[] | null;
+  lastDeviceFingerprint: string | null;
+  warningCount: number | null;
+  isFrozen: boolean | null;
+  failedLoginAttempts: number | null;
+  accountLockedUntil: Date | null;
+  lastLoginAt: Date | null;
+  createdAt: Date | null;
+}
+
+export type InsertUser = Omit<User, "id" | "createdAt" | "lastLoginAt">;
+
+export const insertUserSchema = z.object({
+  username: z.string(),
+  password: z.string(),
+  email: z.string().nullable().optional(),
+  name: z.string(),
+  phone: z.string(),
+  role: z.string().default("buyer"),
+  companyName: z.string().nullable().optional(),
+  gstNo: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  machineSpecialization: z.string().nullable().optional(),
+  isVerified: z.boolean().nullable().optional(),
+  isApproved: z.boolean().nullable().optional(),
+  isEmailVerified: z.boolean().nullable().optional(),
+  twoFactorEnabled: z.boolean().nullable().optional(),
+  twoFactorSecret: z.string().nullable().optional(),
+  allowedDevices: z.array(z.string()).nullable().optional(),
+  lastDeviceFingerprint: z.string().nullable().optional(),
+  warningCount: z.number().nullable().optional(),
+  isFrozen: z.boolean().nullable().optional(),
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, lastLoginAt: true });
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export interface OtpCode {
+  id: string;
+  userId: string | null;
+  email: string;
+  code: string;
+  purpose: string;
+  isUsed: boolean | null;
+  expiresAt: Date;
+  createdAt: Date | null;
+}
 
-export const otpCodes = pgTable("otp_codes", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id"),
-  email: text("email").notNull(),
-  code: text("code").notNull(),
-  purpose: text("purpose").notNull().default("email_verify"),
-  isUsed: boolean("is_used").default(false),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  subCategory: string;
+  machineType: string;
+  profileType: string | null;
+  cuttingType: string | null;
+  decoilerType: string | null;
+  automation: string;
+  model: string;
+  speed: string | null;
+  motor: string | null;
+  gauge: string | null;
+  stations: string | null;
+  image: string;
+  gallery: string[] | null;
+  videoUrl: string | null;
+  description: string;
+  estimatedPrice: string | null;
+  rawMaterialWeight: string | null;
+  isUsed: boolean | null;
+  condition: string | null;
+  location: string | null;
+  yearOfPurchase: string | null;
+  vendorId: string | null;
+}
 
-export type OtpCode = typeof otpCodes.$inferSelect;
+export type InsertProduct = Omit<Product, "id">;
 
-export const products = pgTable("products", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  category: text("category").notNull(),
-  subCategory: text("sub_category").notNull(),
-  machineType: text("machine_type").notNull(),
-  profileType: text("profile_type"),
-  cuttingType: text("cutting_type"),
-  decoilerType: text("decoiler_type"),
-  automation: text("automation").notNull(),
-  model: text("model").notNull(),
-  speed: text("speed"),
-  motor: text("motor"),
-  gauge: text("gauge"),
-  stations: text("stations"),
-  image: text("image").notNull(),
-  gallery: text("gallery").array(),
-  videoUrl: text("video_url"),
-  description: text("description").notNull(),
-  estimatedPrice: decimal("estimated_price", { precision: 10, scale: 2 }),
-  rawMaterialWeight: decimal("raw_material_weight", { precision: 10, scale: 4 }),
-  isUsed: boolean("is_used").default(false),
-  condition: text("condition"),
-  location: text("location"),
-  yearOfPurchase: text("year_of_purchase"),
-  vendorId: text("vendor_id"),
-});
+export interface Dealer {
+  id: string;
+  name: string;
+  phone: string;
+  alternatePhone: string | null;
+  email: string | null;
+  location: string;
+  state: string;
+  city: string | null;
+  pincode: string | null;
+  rating: string | null;
+  ratingCount: number | null;
+  dailyRate: string | null;
+  rateGauge: string | null;
+  gstNo: string | null;
+  isGstVerified: boolean | null;
+  isFrozen: boolean | null;
+  isActive: boolean | null;
+  companyName: string | null;
+  address: string | null;
+  mapUrl: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+}
 
-export const insertProductSchema = createInsertSchema(products).omit({ id: true });
-export type InsertProduct = z.infer<typeof insertProductSchema>;
-export type Product = typeof products.$inferSelect;
+export type InsertDealer = Omit<Dealer, "id" | "createdAt">;
 
-export const dealers = pgTable("dealers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  alternatePhone: text("alternate_phone"),
-  email: text("email"),
-  location: text("location").notNull(),
-  state: text("state").notNull(),
-  city: text("city"),
-  pincode: text("pincode"),
-  rating: decimal("rating", { precision: 3, scale: 1 }),
-  ratingCount: integer("rating_count").default(0),
-  dailyRate: decimal("daily_rate", { precision: 10, scale: 2 }),
-  rateGauge: text("rate_gauge"),
-  gstNo: text("gst_no"),
-  isGstVerified: boolean("is_gst_verified").default(false),
-  isFrozen: boolean("is_frozen").default(false),
-  isActive: boolean("is_active").default(true),
-  companyName: text("company_name"),
-  address: text("address"),
-  mapUrl: text("map_url"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Operator {
+  id: string;
+  name: string;
+  phone: string;
+  aadhaarNo: string | null;
+  experience: string;
+  machineType: string | null;
+  previousSalary: string | null;
+  expectedSalary: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  location: string | null;
+  specialization: string | null;
+  createdAt: Date | null;
+}
 
-export const insertDealerSchema = createInsertSchema(dealers).omit({ id: true, createdAt: true });
-export type InsertDealer = z.infer<typeof insertDealerSchema>;
-export type Dealer = typeof dealers.$inferSelect;
+export type InsertOperator = Omit<Operator, "id" | "createdAt">;
 
-export const operators = pgTable("operators", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  aadhaarNo: text("aadhaar_no"),
-  experience: text("experience").notNull(),
-  machineType: text("machine_type"),
-  previousSalary: text("previous_salary"),
-  expectedSalary: text("expected_salary"),
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  pincode: text("pincode"),
-  location: text("location"),
-  specialization: text("specialization"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Post {
+  id: string;
+  type: string;
+  caption: string;
+  author: string;
+  userId: string | null;
+  likes: number | null;
+  images: string[] | null;
+  videoUrl: string | null;
+  youtubeUrl: string | null;
+  mediaType: string | null;
+  isAdminPost: boolean | null;
+  reportCount: number | null;
+  isApproved: boolean | null;
+  createdAt: Date | null;
+}
 
-export const insertOperatorSchema = createInsertSchema(operators).omit({ id: true, createdAt: true });
-export type InsertOperator = z.infer<typeof insertOperatorSchema>;
-export type Operator = typeof operators.$inferSelect;
+export type InsertPost = Omit<Post, "id" | "createdAt" | "reportCount">;
 
-export const posts = pgTable("posts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  type: text("type").notNull().default("image"),
-  caption: text("caption").notNull(),
-  author: text("author").notNull(),
-  userId: text("user_id"),
-  likes: integer("likes").default(0),
-  images: text("images").array(),
-  videoUrl: text("video_url"),
-  youtubeUrl: text("youtube_url"),
-  reportCount: integer("report_count").default(0),
-  isApproved: boolean("is_approved").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface PostReport {
+  id: string;
+  postId: string;
+  reporterUserId: string;
+  createdAt: Date | null;
+}
 
-export const insertPostSchema = createInsertSchema(posts).omit({ id: true, createdAt: true, reportCount: true });
-export type InsertPost = z.infer<typeof insertPostSchema>;
-export type Post = typeof posts.$inferSelect;
+export type InsertPostReport = Omit<PostReport, "id" | "createdAt">;
 
-export const postReports = pgTable("post_reports", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  postId: text("post_id").notNull(),
-  reporterUserId: text("reporter_user_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  uniqueIndex("idx_post_reports_unique").on(table.postId, table.reporterUserId),
-]);
+export interface Lead {
+  id: string;
+  name: string;
+  phone: string;
+  city: string | null;
+  location: string | null;
+  interest: string | null;
+  machineType: string | null;
+  source: string | null;
+  status: string | null;
+  financeRequired: boolean | null;
+  financeStage: string | null;
+  confidenceScore: number | null;
+  expectedAmount: string | null;
+  machineModel: string | null;
+  notes: string | null;
+  nextFollowupDate: string | null;
+  lastContactedAt: Date | null;
+  visitScheduledAt: Date | null;
+  visitNotes: string | null;
+  isStopList: boolean | null;
+  createdAt: Date | null;
+}
 
-export const insertPostReportSchema = createInsertSchema(postReports).omit({ id: true, createdAt: true });
-export type InsertPostReport = z.infer<typeof insertPostReportSchema>;
-export type PostReport = typeof postReports.$inferSelect;
+export type InsertLead = Omit<Lead, "id" | "createdAt">;
 
-export const leads = pgTable("leads", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  city: text("city"),
-  location: text("location"),
-  interest: text("interest"),
-  machineType: text("machine_type"),
-  source: text("source").default("phone"),
-  status: text("status").default("NORMAL"),
-  financeRequired: boolean("finance_required").default(false),
-  financeStage: text("finance_stage"),
-  confidenceScore: integer("confidence_score").default(0),
-  expectedAmount: text("expected_amount"),
-  machineModel: text("machine_model"),
-  notes: text("notes"),
-  nextFollowupDate: text("next_followup_date"),
-  lastContactedAt: timestamp("last_contacted_at"),
-  visitScheduledAt: timestamp("visit_scheduled_at"),
-  visitNotes: text("visit_notes"),
-  isStopList: boolean("is_stop_list").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface FollowupReminder {
+  id: string;
+  leadId: string;
+  reminderDate: string;
+  reminderTime: string | null;
+  message: string | null;
+  isCompleted: boolean | null;
+  completedAt: Date | null;
+  createdAt: Date | null;
+}
 
-export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true });
-export type InsertLead = z.infer<typeof insertLeadSchema>;
-export type Lead = typeof leads.$inferSelect;
+export type InsertFollowupReminder = Omit<FollowupReminder, "id" | "createdAt">;
 
-export const followupReminders = pgTable("followup_reminders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  leadId: varchar("lead_id").notNull(),
-  reminderDate: text("reminder_date").notNull(),
-  reminderTime: text("reminder_time").default("10:00"),
-  message: text("message"),
-  isCompleted: boolean("is_completed").default(false),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface LeadScoring {
+  id: string;
+  leadId: string;
+  purchaseTimeline: string | null;
+  purchaseTimelineScore: number | null;
+  budgetClarity: string | null;
+  budgetScore: number | null;
+  technicalInterest: string | null;
+  technicalScore: number | null;
+  visitCount: number | null;
+  engagementScore: number | null;
+  responseSpeed: string | null;
+  responseScore: number | null;
+  documentUploaded: boolean | null;
+  documentScore: number | null;
+  totalScore: number | null;
+  leadStatus: string | null;
+  firstEnquiryDate: Date | null;
+  quotationSent: boolean | null;
+  comparisonViewed: boolean | null;
+  lastFollowupResponse: Date | null;
+  lastChatbotInteraction: Date | null;
+  updatedAt: Date | null;
+  createdAt: Date | null;
+}
 
-export const insertFollowupReminderSchema = createInsertSchema(followupReminders).omit({ id: true, createdAt: true });
-export type InsertFollowupReminder = z.infer<typeof insertFollowupReminderSchema>;
-export type FollowupReminder = typeof followupReminders.$inferSelect;
+export type InsertLeadScoring = Omit<LeadScoring, "id" | "createdAt" | "updatedAt">;
 
-export const leadScoring = pgTable("lead_scoring", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  leadId: varchar("lead_id").notNull(),
-  purchaseTimeline: text("purchase_timeline"),
-  purchaseTimelineScore: integer("purchase_timeline_score").default(0),
-  budgetClarity: text("budget_clarity"),
-  budgetScore: integer("budget_score").default(0),
-  technicalInterest: text("technical_interest"),
-  technicalScore: integer("technical_score").default(0),
-  visitCount: integer("visit_count").default(1),
-  engagementScore: integer("engagement_score").default(0),
-  responseSpeed: text("response_speed"),
-  responseScore: integer("response_score").default(0),
-  documentUploaded: boolean("document_uploaded").default(false),
-  documentScore: integer("document_score").default(0),
-  totalScore: integer("total_score").default(0),
-  leadStatus: text("lead_status").default("COLD"),
-  firstEnquiryDate: timestamp("first_enquiry_date"),
-  quotationSent: boolean("quotation_sent").default(false),
-  comparisonViewed: boolean("comparison_viewed").default(false),
-  lastFollowupResponse: timestamp("last_followup_response"),
-  lastChatbotInteraction: timestamp("last_chatbot_interaction"),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface ServiceRequest {
+  id: string;
+  clientName: string;
+  phone: string;
+  machineType: string;
+  problem: string;
+  urgency: string | null;
+  status: string | null;
+  createdAt: Date | null;
+}
 
-export const insertLeadScoringSchema = createInsertSchema(leadScoring).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertLeadScoring = z.infer<typeof insertLeadScoringSchema>;
-export type LeadScoring = typeof leadScoring.$inferSelect;
+export type InsertServiceRequest = Omit<ServiceRequest, "id" | "createdAt">;
 
-export const serviceRequests = pgTable("service_requests", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientName: text("client_name").notNull(),
-  phone: text("phone").notNull(),
-  machineType: text("machine_type").notNull(),
-  problem: text("problem").notNull(),
-  urgency: text("urgency").default("normal"),
-  status: text("status").default("pending"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Subsidy {
+  id: string;
+  name: string;
+  description: string;
+  eligibility: string;
+  subsidy: string;
+  applyUrl: string | null;
+  state: string | null;
+  category: string;
+}
 
-export const insertServiceRequestSchema = createInsertSchema(serviceRequests).omit({ id: true, createdAt: true });
-export type InsertServiceRequest = z.infer<typeof insertServiceRequestSchema>;
-export type ServiceRequest = typeof serviceRequests.$inferSelect;
+export type InsertSubsidy = Omit<Subsidy, "id">;
 
-export const subsidies = pgTable("subsidies", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  eligibility: text("eligibility").notNull(),
-  subsidy: text("subsidy").notNull(),
-  applyUrl: text("apply_url"),
-  state: text("state"),
-  category: text("category").notNull(),
-});
+export interface SparePart {
+  id: string;
+  name: string;
+  price: string;
+  image: string | null;
+  category: string;
+}
 
-export const insertSubsidySchema = createInsertSchema(subsidies).omit({ id: true });
-export type InsertSubsidy = z.infer<typeof insertSubsidySchema>;
-export type Subsidy = typeof subsidies.$inferSelect;
+export type InsertSparePart = Omit<SparePart, "id">;
 
-export const spareParts = pgTable("spare_parts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  price: text("price").notNull(),
-  image: text("image"),
-  category: text("category").notNull(),
-});
+export interface Appointment {
+  id: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail: string | null;
+  purpose: string;
+  preferredDate: string;
+  preferredTime: string;
+  status: string | null;
+  passCode: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+}
 
-export const insertSparePartSchema = createInsertSchema(spareParts).omit({ id: true });
-export type InsertSparePart = z.infer<typeof insertSparePartSchema>;
-export type SparePart = typeof spareParts.$inferSelect;
+export type InsertAppointment = Omit<Appointment, "id" | "createdAt" | "passCode">;
 
-export const appointments = pgTable("appointments", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  buyerName: text("buyer_name").notNull(),
-  buyerPhone: text("buyer_phone").notNull(),
-  buyerEmail: text("buyer_email"),
-  purpose: text("purpose").notNull(),
-  preferredDate: text("preferred_date").notNull(),
-  preferredTime: text("preferred_time").notNull(),
-  status: text("status").default("pending"),
-  passCode: text("pass_code"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface SupplierProfile {
+  id: string;
+  userId: string | null;
+  companyName: string;
+  ownerName: string;
+  gstNo: string | null;
+  businessType: string;
+  establishedYear: string | null;
+  totalEmployees: string | null;
+  factoryAddress: string | null;
+  state: string;
+  city: string;
+  pincode: string | null;
+  phone: string;
+  alternatePhone: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  description: string | null;
+  specialization: string | null;
+  serviceArea: string | null;
+  deliveryCapability: string | null;
+  logo: string | null;
+  rating: string | null;
+  ratingCount: number | null;
+  isGstVerified: boolean | null;
+  isPremium: boolean | null;
+  isVerified: boolean | null;
+  isTopRated: boolean | null;
+  isFastResponder: boolean | null;
+  responseTime: string | null;
+  createdAt: Date | null;
+}
 
-export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true, passCode: true });
-export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
-export type Appointment = typeof appointments.$inferSelect;
+export type InsertSupplierProfile = Omit<SupplierProfile, "id" | "createdAt" | "rating" | "ratingCount">;
 
-export const supplierProfiles = pgTable("supplier_profiles", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: text("user_id"),
-  companyName: text("company_name").notNull(),
-  ownerName: text("owner_name").notNull(),
-  gstNo: text("gst_no"),
-  businessType: text("business_type").notNull().default("Manufacturer"),
-  establishedYear: text("established_year"),
-  totalEmployees: text("total_employees"),
-  factoryAddress: text("factory_address"),
-  state: text("state").notNull(),
-  city: text("city").notNull(),
-  pincode: text("pincode"),
-  phone: text("phone").notNull(),
-  alternatePhone: text("alternate_phone"),
-  email: text("email"),
-  whatsapp: text("whatsapp"),
-  description: text("description"),
-  specialization: text("specialization"),
-  serviceArea: text("service_area"),
-  deliveryCapability: text("delivery_capability"),
-  logo: text("logo"),
-  rating: decimal("rating", { precision: 3, scale: 1 }).default("0"),
-  ratingCount: integer("rating_count").default(0),
-  isGstVerified: boolean("is_gst_verified").default(false),
-  isPremium: boolean("is_premium").default(false),
-  isVerified: boolean("is_verified").default(false),
-  isTopRated: boolean("is_top_rated").default(false),
-  isFastResponder: boolean("is_fast_responder").default(false),
-  responseTime: text("response_time"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Review {
+  id: string;
+  supplierId: string;
+  reviewerName: string;
+  reviewerPhone: string | null;
+  rating: number;
+  comment: string | null;
+  isVerifiedBuyer: boolean | null;
+  isApproved: boolean | null;
+  createdAt: Date | null;
+}
 
-export const insertSupplierProfileSchema = createInsertSchema(supplierProfiles).omit({ id: true, createdAt: true, rating: true, ratingCount: true });
-export type InsertSupplierProfile = z.infer<typeof insertSupplierProfileSchema>;
-export type SupplierProfile = typeof supplierProfiles.$inferSelect;
+export type InsertReview = Omit<Review, "id" | "createdAt">;
 
-export const reviews = pgTable("reviews", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  supplierId: text("supplier_id").notNull(),
-  reviewerName: text("reviewer_name").notNull(),
-  reviewerPhone: text("reviewer_phone"),
-  rating: integer("rating").notNull(),
-  comment: text("comment"),
-  isVerifiedBuyer: boolean("is_verified_buyer").default(false),
-  isApproved: boolean("is_approved").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface SupportTicket {
+  id: string;
+  ticketNumber: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail: string | null;
+  machineName: string;
+  problemType: string;
+  description: string;
+  imageUrls: string[] | null;
+  videoUrl: string | null;
+  urgency: string;
+  status: string;
+  assignedPartner: string | null;
+  adminNotes: string | null;
+  resolution: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
 
-export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
-export type InsertReview = z.infer<typeof insertReviewSchema>;
-export type Review = typeof reviews.$inferSelect;
+export type InsertSupportTicket = Omit<SupportTicket, "id" | "createdAt" | "updatedAt" | "ticketNumber">;
 
-export const supportTickets = pgTable("support_tickets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  ticketNumber: text("ticket_number").notNull().unique(),
-  buyerName: text("buyer_name").notNull(),
-  buyerPhone: text("buyer_phone").notNull(),
-  buyerEmail: text("buyer_email"),
-  machineName: text("machine_name").notNull(),
-  problemType: text("problem_type").notNull(),
-  description: text("description").notNull(),
-  imageUrls: text("image_urls").array(),
-  videoUrl: text("video_url"),
-  urgency: text("urgency").notNull().default("normal"),
-  status: text("status").notNull().default("open"),
-  assignedPartner: text("assigned_partner"),
-  adminNotes: text("admin_notes"),
-  resolution: text("resolution"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export interface AmcPlan {
+  id: string;
+  name: string;
+  tier: string;
+  visitsPerYear: number;
+  price1Year: string;
+  price2Year: string | null;
+  features: string[] | null;
+  phoneSupport: boolean | null;
+  prioritySupport: boolean | null;
+  emergencySupport: boolean | null;
+  freeLabor: boolean | null;
+  spareParts: string | null;
+  dedicatedPartner: boolean | null;
+  isPopular: boolean | null;
+}
 
-export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, updatedAt: true, ticketNumber: true });
-export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
-export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertAmcPlan = Omit<AmcPlan, "id">;
 
-export const amcPlans = pgTable("amc_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  tier: text("tier").notNull(),
-  visitsPerYear: integer("visits_per_year").notNull(),
-  price1Year: text("price_1_year").notNull(),
-  price2Year: text("price_2_year"),
-  features: text("features").array(),
-  phoneSupport: boolean("phone_support").default(false),
-  prioritySupport: boolean("priority_support").default(false),
-  emergencySupport: boolean("emergency_support").default(false),
-  freeLabor: boolean("free_labor").default(false),
-  spareParts: text("spare_parts"),
-  dedicatedPartner: boolean("dedicated_partner").default(false),
-  isPopular: boolean("is_popular").default(false),
-});
+export interface AmcSubscription {
+  id: string;
+  subscriptionNumber: string;
+  planId: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail: string | null;
+  companyName: string | null;
+  machineName: string;
+  machineModel: string | null;
+  installationDate: string | null;
+  duration: string;
+  startDate: string;
+  endDate: string;
+  amount: string;
+  paymentMethod: string | null;
+  status: string;
+  nextVisitDate: string | null;
+  completedVisits: number | null;
+  adminNotes: string | null;
+  createdAt: Date | null;
+}
 
-export const insertAmcPlanSchema = createInsertSchema(amcPlans).omit({ id: true });
-export type InsertAmcPlan = z.infer<typeof insertAmcPlanSchema>;
-export type AmcPlan = typeof amcPlans.$inferSelect;
+export type InsertAmcSubscription = Omit<AmcSubscription, "id" | "createdAt" | "subscriptionNumber" | "completedVisits">;
 
-export const amcSubscriptions = pgTable("amc_subscriptions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  subscriptionNumber: text("subscription_number").notNull().unique(),
-  planId: text("plan_id").notNull(),
-  buyerName: text("buyer_name").notNull(),
-  buyerPhone: text("buyer_phone").notNull(),
-  buyerEmail: text("buyer_email"),
-  companyName: text("company_name"),
-  machineName: text("machine_name").notNull(),
-  machineModel: text("machine_model"),
-  installationDate: text("installation_date"),
-  duration: text("duration").notNull().default("1_year"),
-  startDate: text("start_date").notNull(),
-  endDate: text("end_date").notNull(),
-  amount: text("amount").notNull(),
-  paymentMethod: text("payment_method"),
-  status: text("status").notNull().default("pending"),
-  nextVisitDate: text("next_visit_date"),
-  completedVisits: integer("completed_visits").default(0),
-  adminNotes: text("admin_notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface MachineDocument {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  fileType: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number | null;
+  machineCategory: string | null;
+  machineModel: string | null;
+  uploadedBy: string | null;
+  createdAt: Date | null;
+}
 
-export const insertAmcSubscriptionSchema = createInsertSchema(amcSubscriptions).omit({ id: true, createdAt: true, subscriptionNumber: true, completedVisits: true });
-export type InsertAmcSubscription = z.infer<typeof insertAmcSubscriptionSchema>;
-export type AmcSubscription = typeof amcSubscriptions.$inferSelect;
+export type InsertMachineDocument = Omit<MachineDocument, "id" | "createdAt">;
 
-export const machineDocuments = pgTable("machine_documents", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  description: text("description"),
-  category: text("category").notNull(),
-  fileType: text("file_type").notNull(),
-  fileName: text("file_name").notNull(),
-  filePath: text("file_path").notNull(),
-  fileSize: integer("file_size"),
-  machineCategory: text("machine_category"),
-  machineModel: text("machine_model"),
-  uploadedBy: text("uploaded_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Inspection {
+  id: string;
+  inspectionNumber: string;
+  machineModel: string;
+  machineCategory: string;
+  customerName: string | null;
+  inspectorName: string;
+  status: string;
+  items: any;
+  overallResult: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+}
 
-export const insertMachineDocumentSchema = createInsertSchema(machineDocuments).omit({ id: true, createdAt: true });
-export type InsertMachineDocument = z.infer<typeof insertMachineDocumentSchema>;
-export type MachineDocument = typeof machineDocuments.$inferSelect;
+export type InsertInspection = Omit<Inspection, "id" | "createdAt" | "inspectionNumber">;
 
-export const inspections = pgTable("inspections", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  inspectionNumber: text("inspection_number").notNull().unique(),
-  machineModel: text("machine_model").notNull(),
-  machineCategory: text("machine_category").notNull(),
-  customerName: text("customer_name"),
-  inspectorName: text("inspector_name").notNull(),
-  status: text("status").notNull().default("in_progress"),
-  items: jsonb("items").notNull(),
-  overallResult: text("overall_result"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface IsoDocument {
+  id: string;
+  documentNumber: string;
+  title: string;
+  isoClause: string;
+  category: string;
+  revision: string;
+  status: string;
+  approvedBy: string | null;
+  effectiveDate: string | null;
+  nextReviewDate: string | null;
+  description: string | null;
+  filePath: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
 
-export const insertInspectionSchema = createInsertSchema(inspections).omit({ id: true, createdAt: true, inspectionNumber: true });
-export type InsertInspection = z.infer<typeof insertInspectionSchema>;
-export type Inspection = typeof inspections.$inferSelect;
+export type InsertIsoDocument = Omit<IsoDocument, "id" | "createdAt" | "updatedAt" | "documentNumber">;
 
-export const isoDocuments = pgTable("iso_documents", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  documentNumber: text("document_number").notNull().unique(),
-  title: text("title").notNull(),
-  isoClause: text("iso_clause").notNull(),
-  category: text("category").notNull(),
-  revision: text("revision").notNull().default("01"),
-  status: text("status").notNull().default("draft"),
-  approvedBy: text("approved_by"),
-  effectiveDate: text("effective_date"),
-  nextReviewDate: text("next_review_date"),
-  description: text("description"),
-  filePath: text("file_path"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export interface IsoAudit {
+  id: string;
+  auditNumber: string;
+  auditType: string;
+  auditorName: string;
+  department: string;
+  scheduledDate: string;
+  completedDate: string | null;
+  status: string;
+  findings: any;
+  nonConformities: number | null;
+  observations: number | null;
+  improvements: number | null;
+  overallResult: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+}
 
-export const insertIsoDocumentSchema = createInsertSchema(isoDocuments).omit({ id: true, createdAt: true, updatedAt: true, documentNumber: true });
-export type InsertIsoDocument = z.infer<typeof insertIsoDocumentSchema>;
-export type IsoDocument = typeof isoDocuments.$inferSelect;
+export type InsertIsoAudit = Omit<IsoAudit, "id" | "createdAt" | "auditNumber">;
 
-export const isoAudits = pgTable("iso_audits", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  auditNumber: text("audit_number").notNull().unique(),
-  auditType: text("audit_type").notNull(),
-  auditorName: text("auditor_name").notNull(),
-  department: text("department").notNull(),
-  scheduledDate: text("scheduled_date").notNull(),
-  completedDate: text("completed_date"),
-  status: text("status").notNull().default("scheduled"),
-  findings: jsonb("findings"),
-  nonConformities: integer("non_conformities").default(0),
-  observations: integer("observations").default(0),
-  improvements: integer("improvements").default(0),
-  overallResult: text("overall_result"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Capa {
+  id: string;
+  capaNumber: string;
+  type: string;
+  source: string;
+  description: string;
+  rootCause: string | null;
+  correctiveAction: string | null;
+  preventiveAction: string | null;
+  assignedTo: string;
+  targetDate: string;
+  completedDate: string | null;
+  status: string;
+  effectiveness: string | null;
+  isoClause: string | null;
+  priority: string;
+  createdAt: Date | null;
+}
 
-export const insertIsoAuditSchema = createInsertSchema(isoAudits).omit({ id: true, createdAt: true, auditNumber: true });
-export type InsertIsoAudit = z.infer<typeof insertIsoAuditSchema>;
-export type IsoAudit = typeof isoAudits.$inferSelect;
+export type InsertCapa = Omit<Capa, "id" | "createdAt" | "capaNumber">;
 
-export const capas = pgTable("capas", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  capaNumber: text("capa_number").notNull().unique(),
-  type: text("type").notNull(),
-  source: text("source").notNull(),
-  description: text("description").notNull(),
-  rootCause: text("root_cause"),
-  correctiveAction: text("corrective_action"),
-  preventiveAction: text("preventive_action"),
-  assignedTo: text("assigned_to").notNull(),
-  targetDate: text("target_date").notNull(),
-  completedDate: text("completed_date"),
-  status: text("status").notNull().default("open"),
-  effectiveness: text("effectiveness"),
-  isoClause: text("iso_clause"),
-  priority: text("priority").notNull().default("medium"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export interface Quotation {
+  id: string;
+  quotationNumber: string;
+  customerName: string;
+  companyName: string | null;
+  customerPhone: string;
+  customerEmail: string | null;
+  gstNo: string | null;
+  customerAddress: string | null;
+  projectName: string | null;
+  machineCategory: string;
+  profileType: string;
+  machineModel: string | null;
+  tier: string;
+  automation: string;
+  rolls: number;
+  cuttingType: string | null;
+  decoilerType: string | null;
+  quantity: number;
+  singlePrice: number;
+  totalBeforeDiscount: number;
+  discountPercent: string | null;
+  discountAmount: number | null;
+  subtotal: number;
+  gstAmount: number;
+  grandTotal: number;
+  deliveryDays: number;
+  addOns: string | null;
+  dealerMargin: number | null;
+  accessCode: string;
+  status: string;
+  validUntil: string;
+  preparedBy: string;
+  viewedAt: Date | null;
+  downloadedAt: Date | null;
+  approvedAt: Date | null;
+  adminNotes: string | null;
+  approvalStatus: string | null;
+  approvalNote: string | null;
+  flaggedReason: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
 
-export const insertCapaSchema = createInsertSchema(capas).omit({ id: true, createdAt: true, capaNumber: true });
-export type InsertCapa = z.infer<typeof insertCapaSchema>;
-export type Capa = typeof capas.$inferSelect;
+export type InsertQuotation = Omit<Quotation, "id" | "createdAt" | "updatedAt" | "quotationNumber" | "viewedAt" | "downloadedAt" | "approvedAt">;
 
-export const quotations = pgTable("quotations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  quotationNumber: text("quotation_number").notNull().unique(),
-  customerName: text("customer_name").notNull(),
-  companyName: text("company_name"),
-  customerPhone: text("customer_phone").notNull(),
-  customerEmail: text("customer_email"),
-  gstNo: text("gst_no"),
-  customerAddress: text("customer_address"),
-  projectName: text("project_name"),
-  machineCategory: text("machine_category").notNull(),
-  profileType: text("profile_type").notNull(),
-  machineModel: text("machine_model"),
-  tier: text("tier").notNull(),
-  automation: text("automation").notNull(),
-  rolls: integer("rolls").notNull(),
-  cuttingType: text("cutting_type"),
-  decoilerType: text("decoiler_type"),
-  quantity: integer("quantity").notNull().default(1),
-  singlePrice: integer("single_price").notNull(),
-  totalBeforeDiscount: integer("total_before_discount").notNull(),
-  discountPercent: decimal("discount_percent", { precision: 5, scale: 2 }).default("0"),
-  discountAmount: integer("discount_amount").default(0),
-  subtotal: integer("subtotal").notNull(),
-  gstAmount: integer("gst_amount").notNull(),
-  grandTotal: integer("grand_total").notNull(),
-  deliveryDays: integer("delivery_days").notNull(),
-  addOns: text("add_ons"),
-  dealerMargin: integer("dealer_margin").default(0),
-  accessCode: text("access_code").notNull(),
-  status: text("status").notNull().default("sent"),
-  validUntil: text("valid_until").notNull(),
-  preparedBy: text("prepared_by").notNull().default("Sai Rolotech"),
-  viewedAt: timestamp("viewed_at"),
-  downloadedAt: timestamp("downloaded_at"),
-  approvedAt: timestamp("approved_at"),
-  adminNotes: text("admin_notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertQuotationSchema = createInsertSchema(quotations).omit({ id: true, createdAt: true, updatedAt: true, quotationNumber: true, viewedAt: true, downloadedAt: true, approvedAt: true });
-export type InsertQuotation = z.infer<typeof insertQuotationSchema>;
-export type Quotation = typeof quotations.$inferSelect;
+export interface AppSettings {
+  id: string;
+  companyName: string | null;
+  whatsappNumber: string | null;
+  supportNumber: string | null;
+  currentCoilRate: string | null;
+  address: string | null;
+  chatbotEnabled: boolean | null;
+  whatsappButtonEnabled: boolean | null;
+  splashScreenEnabled: boolean | null;
+  visitorCounterEnabled: boolean | null;
+  marketRateEnabled: boolean | null;
+  quickActionsEnabled: boolean | null;
+  bannerCarouselEnabled: boolean | null;
+  socialFeedEnabled: boolean | null;
+  heroTagline: string | null;
+  chatbotWelcomeMessage: string | null;
+  announcementText: string | null;
+  announcementEnabled: boolean | null;
+  maintenanceMode: boolean | null;
+  assistantPin: string | null;
+  vapidPublicKey: string | null;
+  metaAccessToken: string | null;
+  metaPageId: string | null;
+  metaInstagramAccountId: string | null;
+  approvalDiscountThreshold: number | null;
+  approvalPriceThreshold: number | null;
+}
 
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default(sql`'default'`),
@@ -588,49 +595,115 @@ export const appSettings = pgTable("app_settings", {
   announcementEnabled: boolean("announcement_enabled").default(false),
   maintenanceMode: boolean("maintenance_mode").default(false),
   assistantPin: text("assistant_pin"),
+  metaAccessToken: text("meta_access_token"),
+  metaPageId: text("meta_page_id"),
+  metaInstagramAccountId: text("meta_instagram_account_id"),
 });
 
-export type AppSettings = typeof appSettings.$inferSelect;
+export interface MarketPrice {
+  id: string;
+  material: string;
+  price: string;
+  previousPrice: string | null;
+  unit: string;
+  trend: string;
+  prediction: string | null;
+  upChance: number | null;
+  downChance: number | null;
+  updateSlot: string | null;
+  region: string | null;
+  updatedBy: string | null;
+  date: string;
+  createdAt: Date | null;
+}
 
-export const marketPrices = pgTable("market_prices", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  material: text("material").notNull(),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  previousPrice: decimal("previous_price", { precision: 10, scale: 2 }),
-  unit: text("unit").notNull().default("per_kg"),
-  trend: text("trend").notNull().default("stable"),
-  prediction: text("prediction"),
-  upChance: integer("up_chance"),
-  downChance: integer("down_chance"),
-  updateSlot: text("update_slot"),
-  region: text("region").default("Delhi-Mundka"),
-  updatedBy: text("updated_by"),
-  date: text("date").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export type InsertMarketPrice = Omit<MarketPrice, "id" | "createdAt">;
 
-export const insertMarketPriceSchema = createInsertSchema(marketPrices).omit({ id: true, createdAt: true });
-export type InsertMarketPrice = z.infer<typeof insertMarketPriceSchema>;
-export type MarketPrice = typeof marketPrices.$inferSelect;
+export interface HealthCheck {
+  id: string;
+  operatorName: string;
+  operatorPhone: string | null;
+  machineModel: string;
+  machineCategory: string;
+  noiseLevel: number;
+  vibration: number;
+  oilLeakage: number;
+  productionAccuracy: number;
+  overallScore: number;
+  notes: string | null;
+  createdAt: Date | null;
+}
 
-export const machineHealthChecks = pgTable("machine_health_checks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  operatorName: text("operator_name").notNull(),
-  operatorPhone: text("operator_phone"),
-  machineModel: text("machine_model").notNull(),
-  machineCategory: text("machine_category").notNull(),
-  noiseLevel: integer("noise_level").notNull(),
-  vibration: integer("vibration").notNull(),
-  oilLeakage: integer("oil_leakage").notNull(),
-  productionAccuracy: integer("production_accuracy").notNull(),
-  overallScore: integer("overall_score").notNull(),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export type InsertHealthCheck = Omit<HealthCheck, "id" | "createdAt">;
 
-export const insertHealthCheckSchema = createInsertSchema(machineHealthChecks).omit({ id: true, createdAt: true });
-export type InsertHealthCheck = z.infer<typeof insertHealthCheckSchema>;
-export type HealthCheck = typeof machineHealthChecks.$inferSelect;
+export interface UserConsent {
+  id: string;
+  userId: string;
+  category: string;
+  status: string;
+  ip: string | null;
+  consentVersion: string;
+  withdrawnAt: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export type InsertUserConsent = Omit<UserConsent, "id" | "createdAt" | "updatedAt">;
+
+export interface AssemblyTask {
+  id: string;
+  taskName: string;
+  assignedTeam: string | null;
+  dueDate: string;
+  status: string;
+  urgency: string;
+  notes: string | null;
+  assignedTo: string | null;
+  createdBy: string | null;
+  completedAt: Date | null;
+  createdAt: Date | null;
+}
+
+export type InsertAssemblyTask = Omit<AssemblyTask, "id" | "createdAt" | "completedAt">;
+
+export interface NotificationSubscription {
+  id: string;
+  userId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  createdAt: Date | null;
+}
+
+export type PushSubscription = NotificationSubscription;
+
+export type InsertNotificationSubscription = Omit<NotificationSubscription, "id" | "createdAt">;
+
+export interface AuditLog {
+  id: string;
+  eventType: string;
+  userId: string | null;
+  username: string | null;
+  ip: string | null;
+  deviceFingerprint: string | null;
+  metadata: any;
+  createdAt: Date | null;
+}
+
+export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
+
+export interface ActiveSession {
+  id: string;
+  sid: string;
+  userId: string;
+  username: string | null;
+  ip: string | null;
+  deviceFingerprint: string | null;
+  lastActive: Date | null;
+  createdAt: Date | null;
+}
+
+export type InsertActiveSession = Omit<ActiveSession, "id" | "createdAt" | "lastActive">;
 
 export const quotationComparisons = pgTable("quotation_comparisons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -664,3 +737,297 @@ export const banners = pgTable("banners", {
 export const insertBannerSchema = createInsertSchema(banners).omit({ id: true, createdAt: true });
 export type InsertBanner = z.infer<typeof insertBannerSchema>;
 export type Banner = typeof banners.$inferSelect;
+
+export const broadcastPosts = pgTable("broadcast_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  image: text("image"),
+  audience: text("audience").notNull().default("all"),
+  postToSocialMedia: boolean("post_to_social_media").default(false),
+  facebookPostId: text("facebook_post_id"),
+  facebookPostUrl: text("facebook_post_url"),
+  instagramPostId: text("instagram_post_id"),
+  instagramPostUrl: text("instagram_post_url"),
+  socialMediaStatus: text("social_media_status").default("none"),
+  socialMediaError: text("social_media_error"),
+  viewCount: integer("view_count").default(0),
+  targetUserCount: integer("target_user_count").default(0),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBroadcastPostSchema = createInsertSchema(broadcastPosts).omit({ id: true, createdAt: true, viewCount: true, targetUserCount: true });
+export type InsertBroadcastPost = z.infer<typeof insertBroadcastPostSchema>;
+export type BroadcastPost = typeof broadcastPosts.$inferSelect;
+
+export const broadcastNotificationPrefs = pgTable("broadcast_notification_prefs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull().unique(),
+  enabled: boolean("enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type BroadcastNotificationPref = typeof broadcastNotificationPrefs.$inferSelect;
+
+export interface Referral {
+  id: string;
+  referrerUserId: string;
+  referralCode: string;
+  referredUserId: string | null;
+  referredName: string | null;
+  referredPhone: string | null;
+  status: string;
+  createdAt: Date | null;
+}
+
+export type InsertReferral = Omit<Referral, "id" | "createdAt">;
+
+export interface ReferralReward {
+  id: string;
+  userId: string;
+  rewardType: string;
+  isUnlocked: boolean;
+  unlockedAt: Date | null;
+  createdAt: Date | null;
+}
+
+export type InsertReferralReward = Omit<ReferralReward, "id" | "createdAt">;
+
+export interface IndustryData {
+  id: string;
+  type: string;
+  title: string;
+  value: string | null;
+  city: string | null;
+  description: string | null;
+  videoUrl: string | null;
+  updatedBy: string | null;
+  updatedAt: Date | null;
+  createdAt: Date | null;
+}
+
+export type InsertIndustryData = Omit<IndustryData, "id" | "createdAt">;
+
+export interface ProductionPost {
+  id: string;
+  userId: string;
+  factoryName: string;
+  tonnage: string;
+  note: string | null;
+  date: string;
+  likes: number | null;
+  createdAt: Date | null;
+}
+
+export type InsertProductionPost = Omit<ProductionPost, "id" | "createdAt">;
+
+export const broadcastNotifications = pgTable("broadcast_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  broadcastPostId: text("broadcast_post_id").notNull(),
+  userId: text("user_id").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBroadcastNotificationSchema = createInsertSchema(broadcastNotifications).omit({ id: true, createdAt: true });
+export type InsertBroadcastNotification = z.infer<typeof insertBroadcastNotificationSchema>;
+export type BroadcastNotification = typeof broadcastNotifications.$inferSelect;
+
+export interface VendorMaterial {
+  id: string;
+  vendorId: string;
+  poNumber: string;
+  materialType: string;
+  quantity: number;
+  unit: string;
+  date: string;
+  expectedDate: string | null;
+  status: string;
+  notes: string | null;
+  createdAt: Date | null;
+}
+
+export type InsertVendorMaterial = Omit<VendorMaterial, "id" | "createdAt">;
+
+export interface VendorBill {
+  id: string;
+  vendorId: string;
+  poNumber: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  amount: string | null;
+  status: string;
+  adminNotes: string | null;
+  uploadedAt: Date | null;
+  verifiedAt: Date | null;
+}
+
+export type InsertVendorBill = Omit<VendorBill, "id" | "uploadedAt" | "verifiedAt">;
+
+export interface Manufacturer {
+  id: string;
+  name: string;
+  companyName: string | null;
+  city: string;
+  state: string | null;
+  rank: number | null;
+  userId: string | null;
+  phone: string | null;
+  address: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  products: string[] | null;
+  materials: string[] | null;
+  machineTypes: string[] | null;
+  productionCapacity: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  contactWhatsapp: string | null;
+  description: string | null;
+  logo: string | null;
+  isActive: boolean | null;
+  badgeColor: string | null;
+  createdAt: Date | null;
+}
+
+export interface VideoCallSlot {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  maxBookings: number;
+  currentBookings: number;
+  engineerName: string | null;
+  isActive: boolean | null;
+  createdAt: Date | null;
+}
+
+export type InsertManufacturer = Omit<Manufacturer, "id" | "createdAt">;
+
+export interface MachineOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string | null;
+  machineType: string;
+  machineModel: string | null;
+  quantity: number;
+  status: string;
+  timeline: string | null;
+  expectedDelivery: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export type InsertMachineOrder = Omit<MachineOrder, "id" | "createdAt" | "updatedAt" | "orderNumber">;
+
+export interface ProductionWorkflow {
+  id: string;
+  jobId: string;
+  orderNumber: string | null;
+  machineName: string;
+  currentStage: string;
+  stages: string[];
+  assignedTo: string | null;
+  priority: string | null;
+  notes: string | null;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export type InsertProductionWorkflow = Omit<ProductionWorkflow, "id" | "createdAt" | "updatedAt" | "jobId">;
+
+export interface JobWork {
+  id: string;
+  vendorName: string;
+  vendorPhone: string | null;
+  workDescription: string;
+  machinePart: string | null;
+  quantity: number | null;
+  sentDate: string;
+  expectedReturn: string | null;
+  actualReturn: string | null;
+  status: string;
+  cost: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export type InsertJobWork = Omit<JobWork, "id" | "createdAt" | "updatedAt">;
+
+export interface MaterialRequest {
+  id: string;
+  requestNumber: string;
+  vendorId: string | null;
+  vendorName: string;
+  materialName: string;
+  quantity: string;
+  unit: string | null;
+  urgency: string | null;
+  requestedBy: string;
+  status: string;
+  adminNotes: string | null;
+  notes: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export type InsertMaterialRequest = Omit<MaterialRequest, "id" | "createdAt" | "updatedAt" | "requestNumber">;
+
+export interface EngineerNote {
+  id: string;
+  entityType: string;
+  entityId: string;
+  authorName: string;
+  authorId: string | null;
+  content: string;
+  createdAt: Date | null;
+}
+
+export interface JobApplication {
+  id: string;
+  jobTitle: string;
+  jobCategory: string;
+  applicantName: string;
+  phone: string;
+  experience: string;
+  resumeUrl: string | null;
+  status: string;
+  createdAt: Date | null;
+}
+
+export type InsertJobApplication = Omit<JobApplication, "id" | "createdAt">;
+
+export type InsertVideoCallSlot = Omit<VideoCallSlot, "id" | "createdAt" | "currentBookings">;
+
+export interface VideoCallBooking {
+  id: string;
+  bookingNumber: string;
+  userId: string | null;
+  userName: string;
+  userPhone: string;
+  userEmail: string | null;
+  machineType: string;
+  problemDescription: string;
+  slotId: string;
+  slotDate: string;
+  slotTime: string;
+  status: string;
+  meetingLink: string | null;
+  adminNotes: string | null;
+  cancelReason: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export type InsertVideoCallBooking = Omit<VideoCallBooking, "id" | "createdAt" | "updatedAt" | "bookingNumber">;
+
+export * from "./conversations";
+export * from "./messages";

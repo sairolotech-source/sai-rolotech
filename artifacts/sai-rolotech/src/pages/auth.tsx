@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, LogIn, UserPlus, Factory, Eye, EyeOff, Mail, ShieldCheck, Clock, KeyRound } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getRoleRedirectPath } from "@/lib/role-redirect";
 
 type AuthStep = "login" | "register" | "verify-email" | "pending-approval" | "verify-2fa";
 
 export default function Auth() {
   const [, setLocation] = useLocation();
-  const { login, register, isAuthenticated } = useAuth();
+  const { user, login, register, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState<AuthStep>("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,8 +35,8 @@ export default function Auth() {
     state: "",
   });
 
-  if (isAuthenticated) {
-    setLocation("/");
+  if (isAuthenticated && user) {
+    setLocation(getRoleRedirectPath(user.role));
     return null;
   }
 
@@ -76,7 +77,8 @@ export default function Auth() {
       } else {
         queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         toast({ title: "Welcome back!" });
-        setLocation("/");
+        const redirectPath = data.role ? getRoleRedirectPath(data.role) : "/";
+        setLocation(redirectPath);
       }
     } catch (err: any) {
       let msg = err.message || "Login failed";
@@ -138,7 +140,8 @@ export default function Auth() {
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       toast({ title: "Welcome back!" });
-      setLocation("/");
+      const redirectPath = data.role ? getRoleRedirectPath(data.role) : "/";
+      setLocation(redirectPath);
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Invalid 2FA code", variant: "destructive" });
     } finally {
@@ -395,6 +398,7 @@ export default function Auth() {
                     <SelectContent>
                       <SelectItem value="buyer">Machine Buyer</SelectItem>
                       <SelectItem value="vendor">Machine Vendor / Manufacturer</SelectItem>
+                      <SelectItem value="supplier">Machine Supplier / Dealer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

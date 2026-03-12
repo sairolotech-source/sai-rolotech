@@ -1,0 +1,599 @@
+<<<<<<< HEAD
+
+router.get("/vendor/materials", requireVendor, async (req, res) => {
+  try {
+    const vendorId = req.user!.role === "vendor" ? req.user!.id : undefined;
+    const materials = await db.getVendorMaterials(vendorId);
+    return res.json(materials);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/admin/vendor-materials", requireAdmin, async (req, res) => {
+  try {
+    const material = await db.createVendorMaterial(req.body);
+    return res.status(201).json(material);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/admin/vendor-materials/:id", requireAdmin, async (req, res) => {
+  try {
+    const material = await db.updateVendorMaterial(req.params.id, req.body);
+    if (!material) return res.status(404).json({ message: "Material not found" });
+    return res.json(material);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/vendor/bills", requireVendor, async (req, res) => {
+  try {
+    const vendorId = req.user!.role === "vendor" ? req.user!.id : undefined;
+    const bills = await db.getVendorBills(vendorId);
+    return res.json(bills);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/vendor/bills", requireVendor, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file provided" });
+    const allowedMimes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({ message: "Only PDF, JPEG, PNG, or WebP files are allowed" });
+    }
+    const url = await uploadToFirebaseStorage(req.file.buffer, "vendor-bills", req.file.originalname, req.file.mimetype);
+    const bill = await db.createVendorBill({
+      vendorId: req.user!.id,
+      poNumber: req.body.poNumber || "",
+      fileName: req.file.originalname,
+      fileUrl: url,
+      fileType: req.file.mimetype,
+      amount: req.body.amount || null,
+      status: "pending",
+      adminNotes: null,
+    });
+    return res.status(201).json(bill);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/admin/vendor-bills", requireAdmin, async (req, res) => {
+  try {
+    const bills = await db.getVendorBills();
+    return res.json(bills);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/admin/vendor-bills/:id", requireAdmin, async (req, res) => {
+  try {
+    const bill = await db.updateVendorBill(req.params.id, req.body);
+    if (!bill) return res.status(404).json({ message: "Bill not found" });
+    return res.json(bill);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/admin/quotations-tracker", requireAdmin, async (req, res) => {
+  try {
+    const quotations = await db.getQuotations();
+    return res.json(quotations);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/admin/pending-approvals", requireAdmin, async (req, res) => {
+  try {
+    const quotations = await db.getQuotations();
+    const pending = quotations.filter((q: any) => q.approvalStatus === "pending_approval");
+    return res.json(pending);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/admin/quotations/:id/approve", requireAdmin, async (req, res) => {
+  try {
+    const q = await db.updateQuotation(req.params.id, {
+      approvalStatus: "approved",
+      approvalNote: req.body.note || null,
+      approvedAt: new Date(),
+      updatedAt: new Date(),
+    });
+    if (!q) return res.status(404).json({ message: "Quotation not found" });
+    return res.json(q);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/admin/quotations/:id/reject", requireAdmin, async (req, res) => {
+  try {
+    const q = await db.updateQuotation(req.params.id, {
+      approvalStatus: "rejected",
+      approvalNote: req.body.note || null,
+      updatedAt: new Date(),
+    });
+    if (!q) return res.status(404).json({ message: "Quotation not found" });
+    return res.json(q);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/engineer/machine-orders", requireEngineer, async (_req, res) => {
+  try {
+    const orders = await db.getMachineOrders();
+    return res.json(orders);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+const broadcastCreateSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  message: z.string().min(1, "Message is required"),
+  image: z.string().nullable().optional(),
+  audience: z.enum(["all", "suppliers", "buyers"]).default("all"),
+  postToSocialMedia: z.boolean().default(false),
+  createdBy: z.string().optional(),
+});
+
+router.post("/admin/broadcast-posts", requireAdmin, async (req, res) => {
+  try {
+    const parsed = broadcastCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors.map(e => e.message).join(", ") });
+    }
+    const { title, message, image, audience, postToSocialMedia, createdBy } = parsed.data;
+    const post = await db.createBroadcastPost({
+      title,
+      message,
+      image: image || null,
+      audience,
+      postToSocialMedia,
+      createdBy: createdBy || (req.user as any)?.name || "Admin",
+    });
+
+    const notifCount = await db.createBroadcastNotifications(post.id, audience);
+
+    let socialResult = null;
+    if (postToSocialMedia) {
+      socialResult = await publishToSocialMedia(post.id, title, message, image);
+    }
+
+    const updatedPost = await db.getBroadcastPost(post.id);
+    return res.status(201).json({
+      ...updatedPost,
+      notificationsDelivered: notifCount,
+      socialMediaResult: socialResult,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/engineer/production-workflows", requireEngineer, async (_req, res) => {
+  try {
+    const workflows = await db.getProductionWorkflows();
+    return res.json(workflows);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+const broadcastUpdateSchema = z.object({
+  title: z.string().min(1).optional(),
+  message: z.string().min(1).optional(),
+  image: z.string().nullable().optional(),
+  audience: z.enum(["all", "suppliers", "buyers"]).optional(),
+  postToSocialMedia: z.boolean().optional(),
+});
+
+router.patch("/admin/broadcast-posts/:id", requireAdmin, async (req, res) => {
+  try {
+    const parsed = broadcastUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors.map(e => e.message).join(", ") });
+    }
+    const post = await db.updateBroadcastPost(req.params.id, parsed.data);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+    return res.json(post);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/engineer/production-workflows/:id", requireEngineer, async (req, res) => {
+  try {
+    const workflow = await db.updateProductionWorkflow(req.params.id, req.body);
+    if (!workflow) return res.status(404).json({ message: "Workflow not found" });
+    return res.json(workflow);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/admin/broadcast-posts/:id", requireAdmin, async (req, res) => {
+  try {
+    const ok = await db.deleteBroadcastPost(req.params.id);
+    if (!ok) return res.status(404).json({ message: "Post not found" });
+    return res.json({ message: "Deleted" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/engineer/job-works", requireEngineer, async (_req, res) => {
+  try {
+    const jobs = await db.getJobWorks();
+    return res.json(jobs);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/engineer/job-works/:id", requireEngineer, async (req, res) => {
+  try {
+    const job = await db.updateJobWork(req.params.id, req.body);
+    if (!job) return res.status(404).json({ message: "Job work not found" });
+    return res.json(job);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/engineer/vendors", requireEngineer, async (_req, res) => {
+  try {
+    const suppliers = await db.getSuppliers();
+    const materialRequests = await db.getMaterialRequests();
+    return res.json({ suppliers, materialRequests });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/engineer/material-requests", requireEngineer, async (req, res) => {
+  try {
+    const mr = await db.createMaterialRequest(req.body);
+    return res.status(201).json(mr);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/engineer/notes/:entityType/:entityId", requireEngineer, async (req, res) => {
+  try {
+    const notes = await db.getEngineerNotes(req.params.entityType, req.params.entityId);
+    return res.json(notes);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/engineer/notes", requireEngineer, async (req, res) => {
+  try {
+    const note = await db.createEngineerNote(req.body);
+    return res.status(201).json(note);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/admin/machine-orders", requireAdmin, async (req, res) => {
+  try {
+    const order = await db.createMachineOrder(req.body);
+    return res.status(201).json(order);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/admin/machine-orders/:id", requireAdmin, async (req, res) => {
+  try {
+    const order = await db.updateMachineOrder(req.params.id, req.body);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    return res.json(order);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/admin/machine-orders/:id", requireAdmin, async (req, res) => {
+  try {
+    const ok = await db.deleteMachineOrder(req.params.id);
+    if (!ok) return res.status(404).json({ message: "Order not found" });
+    return res.json({ message: "Deleted" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/broadcast-posts", async (req, res) => {
+  try {
+    const user = req.user as any;
+    let audience: string;
+    if (user) {
+      if (user.role === "admin" || user.role === "sub_admin") {
+        audience = (req.query.audience as string) || "all";
+      } else if (user.role === "supplier" || user.role === "vendor") {
+        audience = "suppliers";
+      } else {
+        audience = "buyers";
+      }
+    } else {
+      audience = "buyers";
+    }
+    const validAudiences = ["all", "suppliers", "buyers"];
+    if (!validAudiences.includes(audience)) {
+      audience = "buyers";
+    }
+    const posts = await db.getBroadcastPostsByAudience(audience);
+    return res.json(posts);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/admin/production-workflows", requireAdmin, async (req, res) => {
+  try {
+    const wf = await db.createProductionWorkflow(req.body);
+    return res.status(201).json(wf);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/broadcast-posts/:id/view", async (req, res) => {
+  try {
+    await db.incrementBroadcastViewCount(req.params.id);
+    return res.json({ message: "View counted" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/admin/production-workflows/:id", requireAdmin, async (req, res) => {
+  try {
+    const ok = await db.deleteProductionWorkflow(req.params.id);
+    if (!ok) return res.status(404).json({ message: "Workflow not found" });
+    return res.json({ message: "Deleted" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/broadcast-notification-pref", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const pref = await db.getBroadcastNotificationPref(user.id);
+    return res.json({ enabled: pref ? pref.enabled : true });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/admin/job-works", requireAdmin, async (req, res) => {
+  try {
+    const jw = await db.createJobWork(req.body);
+    return res.status(201).json(jw);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/broadcast-notification-pref", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const { enabled } = req.body;
+    const pref = await db.upsertBroadcastNotificationPref(user.id, enabled !== false);
+    return res.json(pref);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/admin/job-works/:id", requireAdmin, async (req, res) => {
+  try {
+    const ok = await db.deleteJobWork(req.params.id);
+    if (!ok) return res.status(404).json({ message: "Job work not found" });
+    return res.json({ message: "Deleted" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/broadcast-notifications/unread", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const notifications = await db.getUnreadBroadcastNotifications(user.id);
+    return res.json(notifications);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.patch("/admin/material-requests/:id", requireAdmin, async (req, res) => {
+  try {
+    const mr = await db.updateMaterialRequest(req.params.id, req.body);
+    if (!mr) return res.status(404).json({ message: "Material request not found" });
+    return res.json(mr);
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/broadcast-notifications/count", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const count = await db.getUnreadBroadcastCount(user.id);
+    return res.json({ count });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/admin/material-requests/:id", requireAdmin, async (req, res) => {
+  try {
+    const ok = await db.deleteMaterialRequest(req.params.id);
+    if (!ok) return res.status(404).json({ message: "Material request not found" });
+    return res.json({ message: "Deleted" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/broadcast-notifications/read-all", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    await db.markAllBroadcastNotificationsRead(user.id);
+    return res.json({ message: "All notifications marked as read" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/broadcast-notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const user = req.user as any;
+    await db.markBroadcastNotificationRead(req.params.id, user.id);
+    return res.json({ message: "Notification marked as read" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/admin/meta-settings", requireAdmin, async (req, res) => {
+  try {
+    const settings = await db.getMetaSettings();
+    return res.json({
+      hasAccessToken: !!settings.metaAccessToken,
+      metaPageId: settings.metaPageId,
+      metaInstagramAccountId: settings.metaInstagramAccountId,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+const metaSettingsSchema = z.object({
+  metaAccessToken: z.string().min(1).optional(),
+  metaPageId: z.string().min(1).optional(),
+  metaInstagramAccountId: z.string().optional(),
+});
+
+router.patch("/admin/meta-settings", requireAdmin, async (req, res) => {
+  try {
+    const parsed = metaSettingsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors.map(e => e.message).join(", ") });
+    }
+    await db.updateMetaSettings(parsed.data);
+    const isConfigured = await isMetaConfigured();
+    return res.json({ message: "Meta settings updated", isConfigured });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/admin/meta-oauth/init", requireAdmin, (req, res) => {
+  const appId = process.env.META_APP_ID;
+  if (!appId) {
+    return res.status(400).json({ message: "META_APP_ID environment variable not set" });
+  }
+  const state = crypto.randomBytes(32).toString("hex");
+  (req.session as any).metaOAuthState = state;
+  const redirectUri = `${req.protocol}://${req.get("host")}/api/admin/meta-oauth/callback`;
+  const scopes = "pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish";
+  const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=code&state=${state}`;
+  return res.json({ oauthUrl });
+});
+
+router.get("/admin/meta-oauth/callback", requireAdmin, async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    if (!code) {
+      return res.redirect("/?meta_error=no_code");
+    }
+
+    const expectedState = (req.session as any).metaOAuthState;
+    if (!state || state !== expectedState) {
+      return res.redirect("/?meta_error=invalid_state");
+    }
+    delete (req.session as any).metaOAuthState;
+
+    const appId = process.env.META_APP_ID;
+    const appSecret = process.env.META_APP_SECRET;
+    if (!appId || !appSecret) {
+      return res.redirect("/?meta_error=missing_env");
+    }
+
+    const redirectUri = `${req.protocol}://${req.get("host")}/api/admin/meta-oauth/callback`;
+
+    const tokenResponse = await fetch(
+      `https://graph.facebook.com/v19.0/oauth/access_token?` +
+      `client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&client_secret=${appSecret}&code=${code}`
+    );
+    const tokenData = await tokenResponse.json() as any;
+    if (!tokenData.access_token) {
+      return res.redirect("/?meta_error=token_exchange_failed");
+    }
+
+    const longLivedResponse = await fetch(
+      `https://graph.facebook.com/v19.0/oauth/access_token?` +
+      `grant_type=fb_exchange_token&client_id=${appId}` +
+      `&client_secret=${appSecret}&fb_exchange_token=${tokenData.access_token}`
+    );
+    const longLivedData = await longLivedResponse.json() as any;
+    const userToken = longLivedData.access_token || tokenData.access_token;
+
+    const pagesResponse = await fetch(
+      `https://graph.facebook.com/v19.0/me/accounts?access_token=${userToken}`
+    );
+    const pagesData = await pagesResponse.json() as any;
+    const pages = pagesData.data || [];
+
+    if (pages.length === 0) {
+      return res.redirect("/?meta_error=no_pages");
+    }
+
+    const page = pages[0];
+    const pageAccessToken = page.access_token;
+    const pageId = page.id;
+
+    let igAccountId: string | undefined;
+    try {
+      const igResponse = await fetch(
+        `https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${pageAccessToken}`
+      );
+      const igData = await igResponse.json() as any;
+      if (igData.instagram_business_account?.id) {
+        igAccountId = igData.instagram_business_account.id;
+      }
+    } catch {
+      // IG account not connected
+    }
+
+    await db.updateMetaSettings({
+      metaAccessToken: pageAccessToken,
+      metaPageId: pageId,
+      metaInstagramAccountId: igAccountId,
+    });
+
+    return res.redirect("/admin?tab=broadcasts&meta_connected=true");
+  } catch (err: any) {
+    console.error("Meta OAuth callback error:", err);
+    return res.redirect("/?meta_error=callback_failed");
+  }
+});
+

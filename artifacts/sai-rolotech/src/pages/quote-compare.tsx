@@ -188,7 +188,7 @@ export default function QuoteComparePage() {
           <h1 className="text-sm font-bold" data-testid="text-page-title">Quotation Comparison</h1>
           <p className="text-[10px] text-muted-foreground">Compare 2 vendor quotations side-by-side</p>
         </div>
-        <Scale className="w-5 h-5 text-violet-500 ml-auto" />
+        <Scale className="w-5 h-5 text-purple-500 ml-auto" />
       </div>
 
       <div className="p-4 space-y-4">

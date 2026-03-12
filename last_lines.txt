@@ -1,0 +1,100 @@
+  }
+
+  async getBroadcastNotificationPref(userId: string): Promise<BroadcastNotificationPref | undefined> {
+    const [pref] = await db.select().from(broadcastNotificationPrefs).where(eq(broadcastNotificationPrefs.userId, userId)).limit(1);
+    return pref;
+  }
+
+  async upsertBroadcastNotificationPref(userId: string, enabled: boolean): Promise<BroadcastNotificationPref> {
+    const existing = await this.getBroadcastNotificationPref(userId);
+    if (existing) {
+      const [pref] = await db.update(broadcastNotificationPrefs).set({ enabled }).where(eq(broadcastNotificationPrefs.userId, userId)).returning();
+      return pref;
+    }
+    const [pref] = await db.insert(broadcastNotificationPrefs).values({ userId, enabled }).returning();
+    return pref;
+<<<<<<< HEAD
+=======
+  }
+  async createBroadcastNotifications(broadcastPostId: string, audience: string): Promise<number> {
+    let targetUsers: { id: string }[];
+    if (audience === "all") {
+      targetUsers = await db.select({ id: users.id }).from(users);
+    } else {
+      const roleMap: Record<string, string> = { suppliers: "supplier", buyers: "buyer" };
+      const role = roleMap[audience] || audience;
+      targetUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, role));
+    }
+
+    const optedOutUsers = await db.select({ userId: broadcastNotificationPrefs.userId })
+      .from(broadcastNotificationPrefs)
+      .where(eq(broadcastNotificationPrefs.enabled, false));
+    const optedOutSet = new Set(optedOutUsers.map(u => u.userId));
+
+    const eligibleUsers = targetUsers.filter(u => !optedOutSet.has(u.id));
+
+    if (eligibleUsers.length > 0) {
+      await db.insert(broadcastNotifications).values(
+        eligibleUsers.map(u => ({
+          broadcastPostId,
+          userId: u.id,
+        }))
+      );
+    }
+    return eligibleUsers.length;
+  }
+
+  async getUnreadBroadcastNotifications(userId: string): Promise<BroadcastNotification[]> {
+    return db.select().from(broadcastNotifications)
+      .where(and(
+        eq(broadcastNotifications.userId, userId),
+        eq(broadcastNotifications.isRead, false)
+      ))
+      .orderBy(desc(broadcastNotifications.createdAt));
+  }
+
+  async markBroadcastNotificationRead(notificationId: string, userId: string): Promise<void> {
+    await db.update(broadcastNotifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(broadcastNotifications.id, notificationId),
+        eq(broadcastNotifications.userId, userId)
+      ));
+  }
+
+  async markAllBroadcastNotificationsRead(userId: string): Promise<void> {
+    await db.update(broadcastNotifications)
+      .set({ isRead: true })
+      .where(eq(broadcastNotifications.userId, userId));
+  }
+
+  async getUnreadBroadcastCount(userId: string): Promise<number> {
+    const [result] = await db.select({ count: count() }).from(broadcastNotifications)
+      .where(and(
+        eq(broadcastNotifications.userId, userId),
+        eq(broadcastNotifications.isRead, false)
+      ));
+    return Number(result.count);
+  }
+
+  async getMetaSettings(): Promise<{ metaAccessToken: string | null; metaPageId: string | null; metaInstagramAccountId: string | null }> {
+    const [settings] = await db.select({
+      metaAccessToken: appSettings.metaAccessToken,
+      metaPageId: appSettings.metaPageId,
+      metaInstagramAccountId: appSettings.metaInstagramAccountId,
+    }).from(appSettings).limit(1);
+    return settings || { metaAccessToken: null, metaPageId: null, metaInstagramAccountId: null };
+  }
+
+  async updateMetaSettings(data: { metaAccessToken?: string; metaPageId?: string; metaInstagramAccountId?: string }): Promise<void> {
+    const existing = await db.select().from(appSettings).limit(1);
+    if (existing.length > 0) {
+      await db.update(appSettings).set(data).where(eq(appSettings.id, existing[0].id));
+    } else {
+      await db.insert(appSettings).values({ id: "default", ...data });
+    }
+  }
+>>>>>>> c583346 (Task #28: Multi-Platform Broadcast Post Tool)
+}
+
+export const storage = new Storage();

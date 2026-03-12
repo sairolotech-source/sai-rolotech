@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Phone, MapPin, Mail, MessageCircle, Loader2, CheckCircle, ExternalLink, FileText, Shield } from "lucide-react";
+import { Phone, MapPin, Mail, MessageCircle, Loader2, CheckCircle, ExternalLink, FileText, Shield, Navigation } from "lucide-react";
 import { useState } from "react";
 import { insertLeadSchema } from "@shared/schema";
 import { z } from "zod";
@@ -105,6 +105,21 @@ export default function Contact() {
           </div>
         </div>
       </Card>
+
+      <Link href="/super-navigation" data-testid="link-super-navigation">
+        <Card className="p-4 mb-4 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Navigation className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">How to Reach / कैसे पहुंचें</p>
+              <p className="text-xs text-muted-foreground">Step-by-step from Mundka Metro → Factory</p>
+            </div>
+            <ExternalLink className="w-4 h-4 text-primary shrink-0" />
+          </div>
+        </Card>
+      </Link>
 
       <div className="grid grid-cols-4 gap-3 mb-6">
         {socials.map((s) => (

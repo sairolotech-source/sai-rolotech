@@ -8,3 +8,45 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface GeminiConversation {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+export interface CreateGeminiConversationBody {
+  title: string;
+}
+
+export interface GeminiMessage {
+  id: string;
+  conversationId: string;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface SendGeminiMessageBody {
+  content: string;
+}
+
+export interface GeminiConversationWithMessages {
+  id: string;
+  title: string;
+  createdAt: string;
+  messages: GeminiMessage[];
+}
+
+export interface GenerateGeminiImageBody {
+  prompt: string;
+}
+
+export interface GenerateGeminiImageResponse {
+  b64_json: string;
+  mimeType: string;
+}
+
+export interface GeminiError {
+  error: string;
+}

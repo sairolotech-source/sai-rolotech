@@ -1,16 +1,39 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-import * as schema from "./schema";
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 
-const { Pool } = pg;
+let serviceAccount: any = null;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+  } catch {
+    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON");
+  }
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+if (getApps().length === 0) {
+  if (serviceAccount) {
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET
+      || process.env.VITE_FIREBASE_STORAGE_BUCKET
+      || `${serviceAccount.project_id}.appspot.com`;
+    initializeApp({
+      credential: cert(serviceAccount),
+      storageBucket,
+    });
+  } else {
+    console.warn("FIREBASE_SERVICE_ACCOUNT_KEY not set. Firebase will not be initialized.");
+    initializeApp();
+  }
+}
+
+export const firestore = getFirestore();
+export const firebaseAuth = getAuth();
+export const firebaseStorage = getStorage();
+
+export const db = firestore;
+
+export { FieldValue } from "firebase-admin/firestore";
 
 export * from "./schema";

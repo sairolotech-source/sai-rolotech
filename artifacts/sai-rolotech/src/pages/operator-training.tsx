@@ -116,7 +116,7 @@ const MACHINE_TRAININGS: MachineTraining[] = [
   {
     category: "Rolling Shutter Machine",
     icon: Layers,
-    gradient: "from-indigo-600 to-blue-700",
+    gradient: "from-blue-600 to-cyan-700",
     desc: "Shutter Patti Roll Forming",
     descHi: "Shutter Patti banane ki machine",
     modules: [
@@ -620,7 +620,7 @@ export default function OperatorTraining() {
       </div>
 
       <div className="px-4 mb-4">
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-4">
+        <div className="bg-gradient-to-br from-blue-600 to-cyan-700 rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-white" />

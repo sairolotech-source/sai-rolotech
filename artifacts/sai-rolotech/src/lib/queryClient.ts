@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { auth } from "./firebase";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,16 +8,45 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+async function getAuthHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extra };
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  } catch {}
+  return headers;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const contentHeaders = data ? { "Content-Type": "application/json" } : {};
+  const headers = await getAuthHeaders(contentHeaders);
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+  });
+
+  await throwIfResNotOk(res);
+  return res;
+}
+
+export async function apiUpload(
+  method: string,
+  url: string,
+  formData: FormData,
+): Promise<Response> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: formData,
   });
 
   await throwIfResNotOk(res);
@@ -29,8 +59,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const headers = await getAuthHeaders();
     const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -47,7 +78,8 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
       retry: false,
     },
     mutations: {

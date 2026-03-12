@@ -482,6 +482,27 @@ export type Banner = {
   createdAt: Date | null;
 };
 
+export type Manufacturer = {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  address: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  products: string[] | null;
+  materials: string[] | null;
+  machineTypes: string[] | null;
+  productionCapacity: string | null;
+  contactPhone: string;
+  contactEmail: string | null;
+  contactWhatsapp: string | null;
+  description: string | null;
+  logo: string | null;
+  isActive: boolean | null;
+  createdAt: Date | null;
+};
+
 export const insertLeadSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(10, "Valid phone number required"),
@@ -510,6 +531,37 @@ export const insertServiceRequestSchema = z.object({
 
 export type InsertServiceRequest = z.infer<typeof insertServiceRequestSchema>;
 
+export type BroadcastPost = {
+  id: string;
+  title: string;
+  message: string;
+  image: string | null;
+  audience: string;
+  postToSocialMedia: boolean | null;
+  facebookPostId: string | null;
+  facebookPostUrl: string | null;
+  instagramPostId: string | null;
+  instagramPostUrl: string | null;
+  socialMediaStatus: string | null;
+  socialMediaError: string | null;
+  viewCount: number | null;
+  targetUserCount: number | null;
+  createdBy: string | null;
+  createdAt: Date | null;
+};
+
+export type JobApplication = {
+  id: string;
+  jobTitle: string;
+  jobCategory: string;
+  applicantName: string;
+  phone: string;
+  experience: string;
+  resumeUrl: string | null;
+  status: string;
+  createdAt: Date | null;
+};
+
 export type LeadScoring = {
   id: string;
   leadId: string;
@@ -533,5 +585,62 @@ export type LeadScoring = {
   lastFollowupResponse: Date | null;
   lastChatbotInteraction: Date | null;
   updatedAt: Date | null;
+  createdAt: Date | null;
+};
+
+export type Referral = {
+  id: string;
+  referrerUserId: string;
+  referralCode: string;
+  referredUserId: string | null;
+  referredName: string | null;
+  referredPhone: string | null;
+  status: string;
+  createdAt: Date | null;
+};
+
+export type ReferralReward = {
+  id: string;
+  userId: string;
+  rewardType: string;
+  isUnlocked: boolean;
+  unlockedAt: Date | null;
+  createdAt: Date | null;
+};
+
+export type IndustryData = {
+  id: string;
+  type: string;
+  title: string;
+  value: string | null;
+  city: string | null;
+  description: string | null;
+  videoUrl: string | null;
+  updatedBy: string | null;
+  updatedAt: Date | null;
+  createdAt: Date | null;
+};
+
+export type ProductionPost = {
+  id: string;
+  userId: string;
+  factoryName: string;
+  tonnage: string;
+  note: string | null;
+  date: string;
+  likes: number | null;
+  createdAt: Date | null;
+};
+
+export type Manufacturer = {
+  id: string;
+  companyName: string;
+  city: string;
+  state: string | null;
+  rank: number;
+  userId: string | null;
+  phone: string | null;
+  isActive: boolean | null;
+  badgeColor: string | null;
   createdAt: Date | null;
 };

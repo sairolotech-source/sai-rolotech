@@ -314,7 +314,15 @@ function MyTickets() {
   const { data: tickets, isLoading } = useQuery<SupportTicket[]>({
     queryKey: ["/api/support-tickets", searchPhone],
     queryFn: async () => {
-      const res = await fetch(`/api/support-tickets?phone=${encodeURIComponent(searchPhone)}`, { credentials: "include" });
+      const headers: Record<string, string> = {};
+      try {
+        const { auth } = await import("@/lib/firebase");
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      } catch {}
+      const res = await fetch(`/api/support-tickets?phone=${encodeURIComponent(searchPhone)}`, { headers });
       if (!res.ok) throw new Error("Failed to fetch tickets");
       return res.json();
     },

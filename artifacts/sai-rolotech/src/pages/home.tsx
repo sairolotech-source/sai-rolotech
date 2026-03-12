@@ -1,7 +1,10 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiUpload, queryClient } from "@/lib/queryClient";
 import type { Post, MarketPrice, Banner, Dealer } from "@shared/schema";
-import { Heart, Share2, ChevronRight, Factory, Wrench, Calculator, Phone, CalendarCheck, Building2, Headphones, Shield, FileSpreadsheet, ClipboardCheck, FolderOpen, TrendingUp, TrendingDown, Minus, Activity, Scale, MapPin, Sun, IndianRupee, Eye, UserPlus, CheckCircle2, Store, Star, Gauge, BookOpen, Flag, Camera, Send, AlertTriangle } from "lucide-react";
+import { Heart, Share2, ChevronRight, Factory, Wrench, Calculator, Phone, CalendarCheck, Building2, Headphones, Shield, FileSpreadsheet, ClipboardCheck, FolderOpen, TrendingUp, TrendingDown, Minus, Activity, Scale, MapPin, Sun, IndianRupee, Eye, UserPlus, CheckCircle2, Store, Star, Gauge, BookOpen, Flag, Camera, Send, AlertTriangle, Repeat, Megaphone, Briefcase, Compass, Video, LogIn, Loader2 } from "lucide-react";
+import { useToolUsage } from "@/hooks/use-tool-usage";
+import PlatformRatings from "@/components/PlatformRatings";
+import { categories } from "@/lib/categories";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -13,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import RippleIcon from "@/components/RippleIcon";
 
 function AnimatedCounter({ value, duration = 1.5 }: { value: number; duration?: number }) {
   const [count, setCount] = useState(0);
@@ -60,9 +64,9 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <GlassCard className="relative overflow-hidden mx-4 mt-4 mb-6 border-0">
       <div
-        className="relative py-10 px-5"
+        className="relative py-10 px-5 aurora-shimmer"
         style={{
-          background: "linear-gradient(-45deg, #4338ca, #6366f1, #7c3aed, #3b82f6)",
+          background: "linear-gradient(-45deg, #0055CC, #0077FF, #00D4FF, #7B2FFF)",
           backgroundSize: "300% 300%",
           animation: "mesh-shift 12s ease infinite",
         }}
@@ -70,11 +74,11 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-20"
-            style={{ background: "radial-gradient(circle, rgba(167,139,250,0.8) 0%, transparent 70%)", animation: "blob-morph 8s ease-in-out infinite" }}
+            style={{ background: "radial-gradient(circle, rgba(0,212,255,0.8) 0%, transparent 70%)", animation: "blob-morph 8s ease-in-out infinite" }}
           />
           <div
             className="absolute -bottom-5 -left-5 w-32 h-32 rounded-full opacity-15"
-            style={{ background: "radial-gradient(circle, rgba(96,165,250,0.8) 0%, transparent 70%)", animation: "blob-morph 10s ease-in-out infinite reverse" }}
+            style={{ background: "radial-gradient(circle, rgba(123,47,255,0.8) 0%, transparent 70%)", animation: "blob-morph 10s ease-in-out infinite reverse" }}
           />
         </div>
         <div className="relative z-10">
@@ -82,7 +86,7 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-xs font-semibold text-indigo-200 uppercase tracking-widest mb-2"
+            className="text-xs font-semibold text-cyan-200 uppercase tracking-widest mb-2"
             data-testid="text-hero-label"
           >
             Industrial Ecosystem
@@ -126,43 +130,105 @@ function HeroSection({ onNavigate }: { onNavigate: (path: string) => void }) {
   );
 }
 
-function QuickActions({ onNavigate }: { onNavigate: (path: string) => void }) {
-  const actions = [
+function MostUsedShortcuts({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { recordUsage, getTopTools, hasAnyUsage } = useToolUsage();
+
+  const shortcuts = [
     { icon: Factory, label: "Machines", path: "/catalog", color: "bg-primary/10 text-primary" },
-    { icon: Building2, label: "Suppliers", path: "/suppliers", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" },
-    { icon: Headphones, label: "Support", path: "/support", color: "bg-red-500/10 text-red-600 dark:text-red-400" },
-    { icon: Shield, label: "AMC", path: "/amc", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400" },
-    { icon: CalendarCheck, label: "Visit", path: "/visit", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
+    { icon: MapPin, label: "Near Me", path: "/near-me", color: "bg-green-500/10 text-green-600 dark:text-green-400" },
+    { icon: Building2, label: "Suppliers", path: "/suppliers", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
     { icon: Wrench, label: "Service", path: "/service", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
     { icon: FileSpreadsheet, label: "Quotation", path: "/quotation", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400" },
-    { icon: Calculator, label: "ROI Calc", path: "/roi", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-    { icon: FolderOpen, label: "Documents", path: "/documents", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
-    { icon: ClipboardCheck, label: "QC Check", path: "/inspection", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
     { icon: TrendingUp, label: "Market", path: "/coil-rate", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
     { icon: Activity, label: "Health", path: "/machine-health", color: "bg-green-500/10 text-green-600 dark:text-green-400" },
-    { icon: Scale, label: "Compare", path: "/quote-compare", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+    { icon: Scale, label: "Compare", path: "/quote-compare", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400" },
     { icon: BookOpen, label: "Training", path: "/training", color: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
+    { icon: Flag, label: "Biz Guide", path: "/business-guide", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" },
+    { icon: Repeat, label: "Old Machine", path: "/old-machines", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+    { icon: Megaphone, label: "Broadcasts", path: "/broadcasts", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" },
+    { icon: AlertTriangle, label: "Troubleshoot", path: "/machine-troubleshooting", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+    { icon: Briefcase, label: "Jobs", path: "/jobs", color: "bg-lime-500/10 text-lime-600 dark:text-lime-400" },
+    { icon: UserPlus, label: "Refer", path: "/refer-earn", color: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
+    { icon: TrendingUp, label: "Industry", path: "/industry-data", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
   ];
 
+  const topUsed = getTopTools(shortcuts, 5);
+  const displayShortcuts = hasAnyUsage && topUsed.length > 0 ? topUsed : shortcuts.slice(0, 5);
+
+  const handleClick = (s: typeof shortcuts[0]) => {
+    recordUsage(s.path);
+    onNavigate(s.path);
+  };
+
   return (
-    <div className="flex gap-3 px-4 mb-6 overflow-x-auto scrollbar-hide">
-      {actions.map((action, i) => (
-        <motion.button
-          key={action.label}
-          onClick={() => onNavigate(action.path)}
-          className="flex flex-col items-center gap-2 p-3 rounded-2xl glass-card transition-all min-w-[72px] shrink-0"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.03, type: "spring", stiffness: 300 }}
-          whileTap={{ scale: 0.93 }}
-          data-testid={`button-quick-${action.label.toLowerCase().replace(" ", "-")}`}
+    <div className="px-4 mb-5">
+      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 px-1 flex items-center gap-1">
+        {hasAnyUsage && topUsed.length > 0 && <Star className="w-3 h-3 text-amber-500 fill-amber-500" />}
+        Most Used
+      </p>
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide" data-testid="most-used-shortcuts">
+        {displayShortcuts.map((s, i) => (
+          <RippleIcon
+            key={s.label}
+            onClick={() => handleClick(s)}
+            className={`flex flex-col items-center gap-1.5 p-2.5 rounded-2xl glass-card transition-all min-w-[68px] shrink-0 ${hasAnyUsage && topUsed.length > 0 ? "ring-1 ring-amber-400/20" : ""}`}
+            data-testid={`button-shortcut-${s.label.toLowerCase().replace(" ", "-")}`}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, type: "spring", stiffness: 300 }}
+              whileTap={{ scale: 0.93 }}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color}`}>
+                <s.icon className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium text-foreground">{s.label}</span>
+            </motion.div>
+          </RippleIcon>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BrowseByCategory({ onNavigate }: { onNavigate: (path: string) => void }) {
+  return (
+    <div className="px-4 mb-5">
+      <div className="flex items-center justify-between mb-2.5 px-1">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Browse by Category</p>
+        <button
+          onClick={() => onNavigate("/explore")}
+          className="flex items-center gap-0.5 text-[11px] text-primary font-medium"
+          data-testid="button-see-all-categories"
         >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${action.color}`}>
-            <action.icon className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-medium text-foreground">{action.label}</span>
-        </motion.button>
-      ))}
+          See All <ChevronRight className="w-3 h-3" />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {categories.map((cat, i) => (
+          <RippleIcon
+            key={cat.id}
+            onClick={() => onNavigate(`/category/${cat.id}`)}
+            className="block"
+            data-testid={`button-category-${cat.id}`}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, type: "spring", stiffness: 300 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-2xl glass-card cursor-pointer"
+            >
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${cat.accentBg}`}>
+                <cat.icon className={`w-4.5 h-4.5 ${cat.color}`} />
+              </div>
+              <span className="text-[10px] font-medium text-foreground text-center leading-tight">{cat.name}</span>
+            </motion.div>
+          </RippleIcon>
+        ))}
+      </div>
     </div>
   );
 }
@@ -195,7 +261,7 @@ function BannerCarousel({ onNavigate }: { onNavigate: (path: string) => void }) 
     "from-sky-600 to-blue-800": "bg-gradient-to-r from-sky-600 to-blue-800",
     "from-red-600 to-rose-800": "bg-gradient-to-r from-red-600 to-rose-800",
   };
-  const bgClass = gradientMap[banner.bgColor || ""] || "bg-gradient-to-r from-indigo-600 to-purple-600";
+  const bgClass = gradientMap[banner.bgColor || ""] || "bg-gradient-to-r from-blue-600 to-cyan-600";
 
   return (
     <div className="px-4 mb-4" data-testid="banner-carousel">
@@ -603,13 +669,35 @@ function YouTubeEmbed({ url }: { url: string }) {
   );
 }
 
+function LoginPromptCard({ onNavigate }: { onNavigate: (path: string) => void }) {
+  return (
+    <Card className="mx-4 mb-4 overflow-hidden" data-testid="login-prompt-card">
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <LogIn className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground">Login karke post karo</p>
+          </div>
+          <Button size="sm" className="text-xs" onClick={() => onNavigate("/auth")} data-testid="button-login-to-post">
+            <LogIn className="w-3.5 h-3.5 mr-1" />
+            Login
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function CreatePostCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [caption, setCaption] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"photo" | "video" | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   const createMutation = useMutation({
@@ -617,12 +705,8 @@ function CreatePostCard() {
       const formData = new FormData();
       formData.append("caption", caption);
       if (youtubeUrl) formData.append("youtubeUrl", youtubeUrl);
-      if (imageFile) formData.append("image", imageFile);
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+      if (mediaFile) formData.append("media", mediaFile);
+      const res = await apiUpload("POST", "/api/posts", formData);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Failed to create post");
@@ -630,11 +714,13 @@ function CreatePostCard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.removeQueries({ queryKey: ["/api/posts"] });
+      window.dispatchEvent(new CustomEvent("feed-refresh"));
       setCaption("");
       setYoutubeUrl("");
-      setImageFile(null);
-      setImagePreview(null);
+      setMediaFile(null);
+      setMediaPreview(null);
+      setMediaType(null);
       setExpanded(false);
       toast({ title: "Post created!" });
     },
@@ -643,19 +729,34 @@ function CreatePostCard() {
     },
   });
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+    if (type === "photo") {
       if (!file.type.startsWith("image/")) {
         toast({ title: "Only image files are allowed", variant: "destructive" });
         return;
       }
-      setImageFile(file);
-      setYoutubeUrl("");
-      const reader = new FileReader();
-      reader.onload = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "Image must be under 10MB", variant: "destructive" });
+        return;
+      }
+    } else {
+      if (!file.type.startsWith("video/")) {
+        toast({ title: "Only video files are allowed", variant: "destructive" });
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        toast({ title: "Video must be under 50MB", variant: "destructive" });
+        return;
+      }
     }
+    setMediaFile(file);
+    setMediaType(type);
+    setYoutubeUrl("");
+    const reader = new FileReader();
+    reader.onload = () => setMediaPreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const ytId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
@@ -713,11 +814,23 @@ function CreatePostCard() {
               data-testid="input-post-caption"
             />
 
-            {imagePreview && (
+            {mediaPreview && mediaType === "photo" && (
               <div className="relative">
-                <img src={imagePreview} alt="Preview" className="w-full max-h-48 object-cover rounded-lg" />
+                <img src={mediaPreview} alt="Preview" className="w-full max-h-48 object-cover rounded-lg" />
                 <button
-                  onClick={() => { setImageFile(null); setImagePreview(null); }}
+                  onClick={() => { setMediaFile(null); setMediaPreview(null); setMediaType(null); }}
+                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            {mediaPreview && mediaType === "video" && (
+              <div className="relative">
+                <video src={mediaPreview} className="w-full max-h-48 rounded-lg" controls />
+                <button
+                  onClick={() => { setMediaFile(null); setMediaPreview(null); setMediaType(null); }}
                   className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
                 >
                   ×
@@ -736,7 +849,7 @@ function CreatePostCard() {
                 value={youtubeUrl}
                 onChange={(e) => {
                   setYoutubeUrl(e.target.value);
-                  if (e.target.value) { setImageFile(null); setImagePreview(null); }
+                  if (e.target.value) { setMediaFile(null); setMediaPreview(null); setMediaType(null); }
                 }}
                 placeholder="YouTube link (paste video URL)"
                 className="flex-1 h-8 text-xs"
@@ -747,21 +860,28 @@ function CreatePostCard() {
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} data-testid="input-post-image" />
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleMediaSelect(e, "photo")} data-testid="input-post-image" />
                   <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors">
                     <Camera className="w-4 h-4" />
                     Photo
                   </div>
                 </label>
+                <label className="cursor-pointer">
+                  <input type="file" accept="video/mp4,video/webm" className="hidden" onChange={(e) => handleMediaSelect(e, "video")} data-testid="input-post-video" />
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors">
+                    <Video className="w-4 h-4" />
+                    Video
+                  </div>
+                </label>
               </div>
               <Button
                 size="sm"
-                disabled={!caption.trim() || (!imageFile && !youtubeUrl) || createMutation.isPending}
+                disabled={!caption.trim() || (!mediaFile && !youtubeUrl) || createMutation.isPending}
                 onClick={() => createMutation.mutate()}
                 className="text-xs"
                 data-testid="button-submit-post"
               >
-                <Send className="w-3.5 h-3.5 mr-1" />
+                {createMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />}
                 {createMutation.isPending ? "Posting..." : "Post"}
               </Button>
             </div>
@@ -794,7 +914,8 @@ function PostCard({ post }: { post: Post }) {
     onSuccess: (data: any) => {
       setReported(true);
       if (data.deleted) {
-        queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+        queryClient.removeQueries({ queryKey: ["/api/posts"] });
+        window.dispatchEvent(new CustomEvent("feed-refresh"));
         toast({ title: "Post removed due to reports" });
       } else {
         toast({ title: "Report submitted. Thank you!" });
@@ -810,15 +931,35 @@ function PostCard({ post }: { post: Post }) {
     },
   });
 
+  const handleShare = async () => {
+    const shareData = {
+      title: post.author,
+      text: post.caption,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${post.caption} - ${window.location.href}`);
+        toast({ title: "Link copied!" });
+      }
+    } catch {
+      // user cancelled share
+    }
+  };
+
   const images = post.images || [];
   const timeAgo = post.createdAt
     ? formatTimeAgo(new Date(post.createdAt))
     : "Recently";
 
+  const isOfficial = post.isAdminPost || post.author?.includes("Official");
+
   return (
-    <Card className="mx-4 mb-4 overflow-hidden">
+    <Card className={`mx-4 mb-4 overflow-hidden ${isOfficial ? "border-primary/30 shadow-md" : ""}`}>
       <div className="flex items-center gap-3 p-4 pb-3">
-        <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
+        <div className={`w-9 h-9 rounded-md flex items-center justify-center font-bold text-sm shrink-0 ${isOfficial ? "bg-gradient-to-br from-primary to-blue-600 text-white" : "bg-primary text-primary-foreground"}`}>
           {post.author?.charAt(0)?.toUpperCase() || "S"}
         </div>
         <div className="flex-1 min-w-0">
@@ -826,10 +967,11 @@ function PostCard({ post }: { post: Post }) {
             <p className="text-sm font-semibold truncate" data-testid={`text-post-author-${post.id}`}>
               {post.author}
             </p>
-            {post.author.includes("Official") && (
-              <svg className="w-4 h-4 text-primary shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-              </svg>
+            {isOfficial && (
+              <Badge className="text-[8px] bg-primary/10 text-primary border-primary/20 gap-0.5 px-1.5 py-0 shrink-0">
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                Official
+              </Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground" data-testid={`text-post-time-${post.id}`}>{timeAgo}</p>
@@ -838,6 +980,16 @@ function PostCard({ post }: { post: Post }) {
 
       {post.youtubeUrl ? (
         <YouTubeEmbed url={post.youtubeUrl} />
+      ) : post.videoUrl ? (
+        <div className="relative w-full aspect-video bg-black">
+          <video
+            src={post.videoUrl}
+            className="w-full h-full object-contain"
+            controls
+            preload="metadata"
+            data-testid={`video-post-${post.id}`}
+          />
+        </div>
       ) : images.length > 0 ? (
         <div className="relative">
           <img
@@ -881,7 +1033,11 @@ function PostCard({ post }: { post: Post }) {
                 {(post.likes || 0) + (liked ? 1 : 0)}
               </span>
             </button>
-            <button className="flex items-center gap-1.5 text-sm text-muted-foreground" data-testid={`button-share-${post.id}`}>
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground"
+              data-testid={`button-share-${post.id}`}
+            >
               <Share2 className="w-5 h-5" />
             </button>
           </div>
@@ -1166,9 +1322,44 @@ function OperatorRegistration() {
 
 export default function Home({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { user } = useAuth();
-  const { data: posts, isLoading } = useQuery<Post[]>({
-    queryKey: ["/api/posts"],
+  const [feedPage, setFeedPage] = useState(1);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+
+  const { data: feedData, isLoading } = useQuery<{ posts: Post[]; total: number; hasMore: boolean }>({
+    queryKey: ["/api/posts", feedPage],
+    queryFn: async () => {
+      const res = await fetch(`/api/posts?page=${feedPage}&limit=10`);
+      if (!res.ok) throw new Error("Failed to fetch posts");
+      return res.json();
+    },
   });
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      setFeedPage(1);
+      setAllPosts([]);
+    };
+    window.addEventListener("feed-refresh", handleRefresh);
+    return () => window.removeEventListener("feed-refresh", handleRefresh);
+  }, []);
+
+  useEffect(() => {
+    if (feedData?.posts) {
+      if (feedPage === 1) {
+        setAllPosts(feedData.posts);
+      } else {
+        setAllPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPosts = feedData.posts.filter(p => !existingIds.has(p.id));
+          return [...prev, ...newPosts];
+        });
+      }
+    }
+  }, [feedData, feedPage]);
+
+  const handleLoadMore = () => {
+    setFeedPage(p => p + 1);
+  };
 
   return (
     <div className="pb-24">
@@ -1179,7 +1370,11 @@ export default function Home({ onNavigate }: { onNavigate: (path: string) => voi
       <ScrollReveal delay={0.1}>
         <GPCoilDealerBanner />
       </ScrollReveal>
-      <QuickActions onNavigate={onNavigate} />
+      <MostUsedShortcuts onNavigate={onNavigate} />
+      <BrowseByCategory onNavigate={onNavigate} />
+      <ScrollReveal delay={0.1}>
+        <PlatformRatings />
+      </ScrollReveal>
       <ScrollReveal delay={0.05}>
         <DailyRateTracker />
       </ScrollReveal>
@@ -1189,27 +1384,64 @@ export default function Home({ onNavigate }: { onNavigate: (path: string) => voi
       <VisitorCounter />
 
       <ScrollReveal>
-        <div className="px-4 mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold" data-testid="text-feed-title">Latest Updates</h2>
-          <Badge variant="secondary" className="text-xs rounded-full" data-testid="badge-post-count">
-            {posts?.length || 0} posts
-          </Badge>
+        <div className="px-4 mb-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Megaphone className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold" data-testid="text-feed-title">Business Feed</h2>
+                <p className="text-[10px] text-muted-foreground">Community Wall — Sai Rolotech</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-xs rounded-full" data-testid="badge-post-count">
+              {feedData?.total || allPosts.length || 0} posts
+            </Badge>
+          </div>
         </div>
       </ScrollReveal>
 
-      {user && <ScrollReveal><CreatePostCard /></ScrollReveal>}
+      {user ? (
+        <ScrollReveal><CreatePostCard /></ScrollReveal>
+      ) : (
+        <ScrollReveal><LoginPromptCard onNavigate={onNavigate} /></ScrollReveal>
+      )}
 
-      {isLoading ? (
+      {isLoading && feedPage === 1 ? (
         <>
           <PostSkeleton />
           <PostSkeleton />
         </>
-      ) : posts && posts.length > 0 ? (
-        posts.map((post, i) => (
-          <ScrollReveal key={post.id} delay={i * 0.05}>
-            <PostCard post={post} />
-          </ScrollReveal>
-        ))
+      ) : allPosts.length > 0 ? (
+        <>
+          {allPosts.map((post, i) => (
+            <ScrollReveal key={post.id} delay={i < 10 ? i * 0.05 : 0}>
+              <PostCard post={post} />
+            </ScrollReveal>
+          ))}
+          {feedData?.hasMore && (
+            <div className="px-4 mb-4 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs w-full"
+                onClick={handleLoadMore}
+                disabled={isLoading}
+                data-testid="button-load-more"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Load More Posts"
+                )}
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <ScrollReveal>
           <div className="text-center py-12 px-4">

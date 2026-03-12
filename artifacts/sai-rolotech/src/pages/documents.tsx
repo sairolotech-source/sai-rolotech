@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiUpload, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import type { MachineDocument } from "@shared/schema";
@@ -30,7 +30,7 @@ const categoryColors: Record<string, string> = {
   manual: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
   certificate: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
   invoice: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  specification: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+  specification: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   other: "bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300",
 };
 
@@ -69,11 +69,7 @@ function UploadForm({ onClose }: { onClose: () => void }) {
       if (formData.machineCategory) fd.append("machineCategory", formData.machineCategory);
       if (formData.machineModel) fd.append("machineModel", formData.machineModel);
 
-      const res = await fetch("/api/admin/documents", {
-        method: "POST",
-        body: fd,
-        credentials: "include",
-      });
+      const res = await apiUpload("POST", "/api/admin/documents", fd);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
